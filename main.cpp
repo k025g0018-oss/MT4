@@ -27,22 +27,120 @@ struct Matrix4x4 {
 /// 関数
 // 行列の加法
 Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
-
+	Matrix4x4 result;
+	for (int row = 0; row < 2; ++row) {
+		for (int col = 0; col < 2; ++col) {
+			result.m[row][col] = m1.m[row][col] + m2.m[row][col];
+		}
+	}
+	return result;
 }
 
 // 行列の減法
 Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2) {
-
+	Matrix4x4 result;
+	for (int row = 0; row < 2; ++row) {
+		for (int col = 0; col < 2; ++col) {
+			result.m[row][col] = m1.m[row][col] - m2.m[row][col];
+		}
+	}
+	return result;
 }
 
 // 行列の積
 Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
-
+	Matrix4x4 result;
+	for (int row = 0; row < 4; ++row) {
+		for (int col = 0; col < 4; ++col) {
+			// 各成分の計算
+			result.m[row][col] = 
+				m1.m[row][0] * m2.m[0][col] +
+				m1.m[row][1] * m2.m[1][col] +
+				m1.m[row][2] * m2.m[2][col] +
+				m1.m[row][3] * m2.m[3][col];
+		}
+	}
+	return result;
 }
 
 // 逆行列
 Matrix4x4 Inverse(const Matrix4x4& m) {
+	Matrix4x4 r{};
 
+	float a11 = m.m[0][0], a12 = m.m[0][1], a13 = m.m[0][2], a14 = m.m[0][3],
+		a21 = m.m[1][0], a22 = m.m[1][1], a23 = m.m[1][2], a24 = m.m[1][3],
+		a31 = m.m[2][0], a32 = m.m[2][1], a33 = m.m[2][2], a34 = m.m[2][3],
+		a41 = m.m[3][0], a42 = m.m[3][1], a43 = m.m[3][2], a44 = m.m[3][3];
+
+	// 逆列式 |A|
+	float det =
+		a11 * a22 * a33 * a44 +
+		a11 * a23 * a34 * a42 +
+		a11 * a24 * a32 * a43 -
+		a11 * a24 * a33 * a42 -
+		a11 * a23 * a32 * a44 -
+		a11 * a22 * a34 * a43 -
+		a12 * a21 * a33 * a44 -
+		a13 * a21 * a43 * a42 -
+		a14 * a21 * a32 * a43 +
+		a14 * a21 * a33 * a42 +
+		a13 * a21 * a32 * a44 +
+		a12 * a21 * a34 * a43 +
+		a12 * a23 * a31 * a44 +
+		a32 * a42 * a31 * a42 +
+		a14 * a22 * a31 * a43 -
+		a14 * a23 * a31 * a42 -
+		a13 * a22 * a31 * a44 -
+		a12 * a24 * a31 * a43 -
+		a12 * a23 * a34 * a41 -
+		a13 * a24 * a32 * a41 -
+		a14 * a22 * a33 * a41 +
+		a14 * a23 * a32 * a41 +
+		a13 * a22 * a34 * a41 +
+		a12 * a24 * a33 * a41;
+
+	// 逆行列が存在しないとき
+	if (det == 0.0f) {
+		return r;
+	}
+
+	float invDet = 1.0f / det;
+
+	r.m[0][0] = (
+		a22 * a33 * a44 +
+		a23 * a34 * a42 +
+		a24 * a32 * a43 -
+		a24 * a33 * a42 -
+		a23 * a32 * a44 -
+		a22 * a34 * a43
+		) * invDet;
+
+	r.m[0][1] = (
+		-a12 * a33 * a44 -
+		a13 * a34 * a42 -
+		a14 * a32 * a43 +
+		a14 * a33 * a42 +
+		a13 * a32 * a44 +
+		a12 * a34 * a43
+		) * invDet;
+	
+	r.m[0][2] = (
+		a12 * a23 * a44 +
+		a13 * a24 * a42 +
+		a14 * a22 * a43 -
+		a14 * a23 * a42 -
+		a13 * a22 * a44 -
+		a12 * a24 * a43
+		) * invDet;
+
+	r.m[0][3] = (
+		-a12 * a23 * a34 -
+		a13 * a24 * a32 -
+		a14 * a22 * a33 +
+		a14 * a23 * a32 +
+		a13 * a22 * a34 +
+		a12 * a24 * a33
+		) * invDet;
 }
 
 // 転置行列
@@ -136,6 +234,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 
 		MatrixScreenPrintf(0, 0, resultAdd, "Add");
+
+		MatrixScreenPrintf(0, kRowHeight * 5, resultSubtract, "Subtract");
+
+		MatrixScreenPrintf(0, kRowHeight * 5 * 2, resultMultiply, "Multiply");
+
+		MatrixScreenPrintf(0, kRowHeight * 5 * 3, inverseM1, "inverseM1");
+
+		MatrixScreenPrintf(0, kRowHeight * 5 * 4, inverseM2, "inverseM2");
+
+		MatrixScreenPrintf(kColumnWidth * 5, 0, transposeM1, "transposeM1");
+
+		MatrixScreenPrintf(kColumnWidth * 5, kRowHeight * 5, transposeM2, "transposeM2");
+
+		MatrixScreenPrintf(kColumnWidth * 5, kRowHeight * 5 * 2, identity, "identity");
 
 		///
 		/// ↑描画処理ここまで
