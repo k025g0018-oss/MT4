@@ -14,79 +14,54 @@ typedef struct Vector2 {
 	float y;
 } Vector2;
 
+// 3次元ベクトル
 struct Vector3 {
 	float x, y, z;
 };
 
-/// 3次元ベクトル関数
-// 加算
-Vector3 Add(const Vector3& v1, const Vector3& v2) {
-	Vector3 result;
-	result.x = v1.x + v2.x;
-	result.y = v1.y + v2.y;
-	result.z = v1.z + v2.z;
-	return result;
+// 4x4行列
+struct Matrix4x4 {
+	float m[4][4];
+};
+
+/// 関数
+// 行列の加法
+Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
+
 }
 
-// 減算
-Vector3 Subtract(const Vector3& v1, const Vector3& v2) {
-	Vector3 result;
-	result.x = v1.x - v2.x;
-	result.y = v1.y - v2.y;
-	result.z = v1.z - v2.z;
-	return result;
+// 行列の減法
+Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2) {
+
 }
 
-// スカラー倍
-Vector3 Multiply(float scalar, const Vector3& v) {
-	Vector3 result;
-	result = {scalar * v.x, scalar * v.y, scalar * v.z};
-	return result;
+// 行列の積
+Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
+
 }
 
-// 内積
-float Dot(const Vector3& v1, const Vector3& v2) {
-	float result;
-	result =
-		v1.x * v2.x +
-		v1.y * v2.y +
-		v1.z * v2.z;
-	return result;
+// 逆行列
+Matrix4x4 Inverse(const Matrix4x4& m) {
+
 }
 
-// 長さ(ノルム)
-float Length(const Vector3& v) {
-	float result;
-	result = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-	return result;
+// 転置行列
+Matrix4x4 Transpose(const Matrix4x4& m) {
+
 }
 
-// 正規化
-Vector3 Normalize(const Vector3& v) {
-	Vector3 result;
-	// 長さを計算
-	float length = Length(v);
+// 単位行列の作成
+Matrix4x4 MakeIdentity4x4();
 
-	// 0の時はエラーが出るのでそのまま0を返す分岐を作る
-	if (length != 0.0f) {
-		result.x = v.x / length;
-		result.y = v.y / length;
-		result.z = v.z / length;
-	} else {
-		// 長さが0の場合は０を返す
-		result = {0.0f, 0.0f, 0.0f};
-	}
-	
-	return result;
-}
-
-// 数値表示
+// 4x4行列の数値表示
+static const int kRowHeight = 30;
 static const int kColumnWidth = 60;
-void VectorScreenPrintf(int x, int y, const Vector3& vector, const char* label) {
-	Novice::ScreenPrintf(x, y, "%.02f", vector.x);
-	Novice::ScreenPrintf(x + kColumnWidth, y, "%.02f", vector.y);
-	Novice::ScreenPrintf(x + kColumnWidth * 2, y, "%.02f", vector.z);
-	Novice::ScreenPrintf(x + kColumnWidth * 3, y, "%s", label);
+void MatrixScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label) {
+	for (int row = 0; row < 4; ++row) {
+		for (int column = 0; column < 4; ++column) {
+			Novice::ScreenPrintf(x + column * kColumnWidth, y + row * kRowHeight, "%6.02f", matrix.m[row][column],label);
+		}
+	}
 }
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -108,10 +83,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char keys[256] = {0};
 	char preKeys[256] = {0};
 
-	// 数値
-	Vector3 v1{1.0f, 3.0f, -5.0f};
-	Vector3 v2{4.0f, -1.0f, 2.0f};
-	float k = {4.0f};
+	// 4x4行列
+	Matrix4x4 m1 = {
+		3.2f, 0.7f, 9.6f, 4.4f,
+		5.5f, 1.3f, 7.8f, 2.1f,
+		6.9f, 8.0f, 2.6f, 1.0f,
+		0.5f, 7.2f, 5.1f, 3.3f
+	};
+
+	Matrix4x4 m2 = {
+		4.1f, 6.5f, 3.3f, 2.2f,
+		8.8f, 0.6f, 9.9f, 7.7f,
+		1.1f, 5.5f, 6.6f, 0.0f,
+		3.3f, 9.9f, 8.8f, 2.2f
+	};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -126,22 +111,21 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
-		// 計算
-		Vector3 resultAdd = Add(v1, v2);
+		Matrix4x4 resultAdd = Add(m1, m2);
 
-		Vector3 resultSubtract = Subtract(v1, v2);
+		Matrix4x4 resultMultiply = Multiply(m1, m2);
 
-		Vector3 resultMultiply = Multiply(k, v1);
+		Matrix4x4 resultSubtract = Subtract(m1, m2);
 
-		float resultDot = Dot(v1, v2);
+		Matrix4x4 inverseM1 = Inverse(m1);
 
-		float resultLength = Length(v1);
+		Matrix4x4 inverseM2 = Inverse(m2);
 
-		Vector3 resultNormalize = Normalize(v2);
+		Matrix4x4 transposeM1 = Transpose(m1);
 
-		//////////
-		/// 座標変換
-		//////////
+		Matrix4x4 transposeM2 = Transpose(m2);
+
+		Matrix4x4 identity = MakeIdentity4x4();
 
 		///
 		/// ↑更新処理ここまで
@@ -151,19 +135,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		int kRow = 30;
-
-		VectorScreenPrintf(0, 0, resultAdd, " : Add");
-
-		VectorScreenPrintf(0, kRow, resultSubtract, " : Subtract");
-
-		VectorScreenPrintf(0, kRow * 2, resultMultiply, ": Multiply");
-
-		Novice::ScreenPrintf(0, kRow * 3, "%.02f : Dot", resultDot);
-
-		Novice::ScreenPrintf(0, kRow * 4, "%.02f : Length", resultLength);
-
-		VectorScreenPrintf(0, kRow * 5, resultNormalize, " : Normalize");
+		MatrixScreenPrintf(0, 0, resultAdd, "Add");
 
 		///
 		/// ↑描画処理ここまで
