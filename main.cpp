@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <math.h>
 
-const char kWindowTitle[] = "LE2B_21_タヤ_ナオユキ_タイトル";
+const char kWindowTitle[] = "LE2B_21_タヤ_ナオユキ_MT3_00_01";
 
 //////////
 /// 構造体
