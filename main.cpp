@@ -64,6 +64,58 @@ Matrix4x4 MakeRotateZMatrix(float radian) {
 	};
 }
 
+// 平行移動行列
+Matrix4x4 MakeTranslateMatrix(const Vector3& translate) {
+	Matrix4x4 result{};
+
+	// 単位行列
+	result.m[0][0] = 1.0f;
+	result.m[1][1] = 1.0f;
+	result.m[2][2] = 1.0f;
+	result.m[3][3] = 1.0f;
+
+	// 4行目に移動量
+	result.m[3][0] = translate.x;
+	result.m[3][1] = translate.y;
+	result.m[3][2] = translate.z;
+
+	return result;
+}
+
+// 拡大縮小行列
+Matrix4x4 MakeScaleMatrix(const Vector3& scale) {
+	Matrix4x4 result{};
+
+	// 対角に
+	result.m[0][0] = scale.x;
+	result.m[1][1] = scale.y;
+	result.m[2][2] = scale.z;
+	result.m[3][3] = 1.0f;
+
+	return result;
+}
+
+// 座標変換
+Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix) {
+	Vector3 result{};
+
+	// (x, y, z, 1) * Matrix
+	result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] + vector.z * matrix.m[2][0] + 1.0f * matrix.m[3][0];
+	result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] + vector.z * matrix.m[2][1] + 1.0f * matrix.m[3][1];
+	result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] + vector.z * matrix.m[2][2] + 1.0f * matrix.m[3][2];
+
+	// w成分の計算
+	float w = vector.x * matrix.m[0][3] + vector.y * matrix.m[1][3] + vector.z * matrix.m[2][3] + 1.0f * matrix.m[3][3];
+
+	// 同次座標のwで割る
+	assert(w != 0.0f);
+	result.x /= w;
+	result.y /= w;
+	result.z /= w;
+
+	return result;
+}
+
 // 4x4行列の数値表示
 static const int kRowHeight = 30;
 static const int kColumnWidth = 60;
