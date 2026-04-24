@@ -40,6 +40,18 @@ Matrix4x4 MakeRotateZMatrix(float radian) {
 
 }
 
+// 4x4行列の数値表示
+static const int kRowHeight = 30;
+static const int kColumnWidth = 60;
+void MatrixScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label) {
+	Novice::ScreenPrintf(x, y, "%s", label);
+	for (int row = 0; row < 4; ++row) {
+		for (int column = 0; column < 4; ++column) {
+			Novice::ScreenPrintf(x + column * kColumnWidth, y + (row + 1) * kRowHeight, "%6.02f", matrix.m[row][column]);
+		}
+	}
+}
+
 // Vector3の数値表示
 void VectorScreenPrintf(int x, int y, const Vector3& vector, const char* label) {
 	Novice::ScreenPrintf(x, y, "%s", label);
