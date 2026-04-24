@@ -1,7 +1,7 @@
 #include <Novice.h>
 #define _USE_MATH_DEFINES
 #include <assert.h>
-#include <math.h>
+#include <cmath>
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
@@ -25,68 +25,19 @@ struct Matrix4x4 {
 };
 
 /// 関数
-// 平行移動行列
-Matrix4x4 MakeTranslateMatrix(const Vector3& translate) {
-	Matrix4x4 result{};
+// x軸回転行列
+Matrix4x4 MakeRotateXMatrix(float radian) {
 
-	// 単位行列
-	result.m[0][0] = 1.0f;
-	result.m[1][1] = 1.0f;
-	result.m[2][2] = 1.0f;
-	result.m[3][3] = 1.0f;
-
-	// 4行目に移動量
-	result.m[3][0] = translate.x;
-	result.m[3][1] = translate.y;
-	result.m[3][2] = translate.z;
-
-	return result;
 }
 
-// 拡大縮小行列
-Matrix4x4 MakeScaleMatrix(const Vector3& scale) {
-	Matrix4x4 result{};
+// y軸回転行列
+Matrix4x4 MakeRotateYMatrix(float radian) {
 
-	// 対角に
-	result.m[0][0] = scale.x;
-	result.m[1][1] = scale.y;
-	result.m[2][2] = scale.z;
-	result.m[3][3] = 1.0f;
-
-	return result;
 }
 
-// 座標変換
-Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix) {
-	Vector3 result{};
+// z軸回転行列
+Matrix4x4 MakeRotateZMatrix(float radian) {
 
-	// (x, y, z, 1) * Matrix
-	result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] + vector.z * matrix.m[2][0] + 1.0f * matrix.m[3][0];
-	result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] + vector.z * matrix.m[2][1] + 1.0f * matrix.m[3][1];
-	result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] + vector.z * matrix.m[2][2] + 1.0f * matrix.m[3][2];
-
-	// w成分の計算
-	float w = vector.x * matrix.m[0][3] + vector.y * matrix.m[1][3] + vector.z * matrix.m[2][3] + 1.0f * matrix.m[3][3];
-
-	// 同次座標のwで割る
-	assert(w != 0.0f);
-	result.x /= w;
-	result.y /= w;
-	result.z /= w;
-
-	return result;
-}
-
-// 4x4行列の数値表示
-static const int kRowHeight = 30;
-static const int kColumnWidth = 60;
-void MatrixScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label) {
-	Novice::ScreenPrintf(x, y, "%s", label);
-	for (int row = 0; row < 4; ++row) {
-		for (int column = 0; column < 4; ++column) {
-			Novice::ScreenPrintf(x + column * kColumnWidth, y + (row + 1) * kRowHeight, "%6.02f", matrix.m[row][column]);
-		}
-	}
 }
 
 // Vector3の数値表示
@@ -115,19 +66,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char preKeys[256] = {0};
 
 	/// 定義エリア
+	std::sin(radian);
+	std::cos(radian);
 
-	Vector3 translate{4.1f, 2.6f, 0.8f};
+	Vector3 rotate{0.4f, 1.43f, -0.8f};
 
-	Vector3 scale{1.5f, 5.2f, 7.3f};
+	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
+	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
+	Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
 
-	Vector3 point{2.3f, 3.8f, 1.4f};
-
-	Matrix4x4 transformMatrix = {
-		1.0f, 2.0f, 3.0f, 4.0f,
-		3.0f, 1.0f, 1.0f, 2.0f,
-		1.0f, 4.0f, 2.0f, 3.0f,
-		2.0f, 2.0f, 1.0f, 3.0f
-	};
+	Matrix4x4 rotateXYZMatrix = Multiply()
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
