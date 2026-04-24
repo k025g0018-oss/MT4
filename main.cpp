@@ -46,6 +46,13 @@ void VectorScreenPrintf(int x, int y, const Vector3& vector, const char* label) 
 	Novice::ScreenPrintf(x, y + kRowHeight, "%.02f, %.02f, %.02f", vector.x, vector.y, vector.z);
 }
 
+// スカラー倍
+Vector3 Multiply(float scalar, const Vector3& v) {
+	Vector3 result;
+	result = {scalar * v.x, scalar * v.y, scalar * v.z};
+	return result;
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
