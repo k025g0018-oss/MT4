@@ -27,17 +27,41 @@ struct Matrix4x4 {
 /// 関数
 // x軸回転行列
 Matrix4x4 MakeRotateXMatrix(float radian) {
+	float s = std::sin(radian);
+	float c = std::cos(radian);
 
+	return{
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, c, s, 0.0f,
+		0.0f, -s, c, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
 }
 
 // y軸回転行列
 Matrix4x4 MakeRotateYMatrix(float radian) {
+	float s = std::sin(radian);
+	float c = std::cos(radian);
 
+	return{
+		c, 0.0f, -s, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		s, 0.0f, c, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
 }
 
 // z軸回転行列
 Matrix4x4 MakeRotateZMatrix(float radian) {
+	float s = std::sin(radian);
+	float c = std::cos(radian);
 
+	return{
+		c, s, 0.0f, 0.0f,
+		-s, c, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
 }
 
 // 4x4行列の数値表示
@@ -58,10 +82,16 @@ void VectorScreenPrintf(int x, int y, const Vector3& vector, const char* label) 
 	Novice::ScreenPrintf(x, y + kRowHeight, "%.02f, %.02f, %.02f", vector.x, vector.y, vector.z);
 }
 
-// スカラー倍
-Vector3 Multiply(float scalar, const Vector3& v) {
-	Vector3 result;
-	result = {scalar * v.x, scalar * v.y, scalar * v.z};
+// Matrix4x4同士の掛け算
+Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 result{};
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			for (int k = 0; k < 4; k++) {
+				result.m[i][j] += m1.m[i][k] * m2.m[k][j];
+			}
+		}
+	}
 	return result;
 }
 
@@ -85,9 +115,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char preKeys[256] = {0};
 
 	/// 定義エリア
-	std::sin(radian);
-	std::cos(radian);
-
 	Vector3 rotate{0.4f, 1.43f, -0.8f};
 
 	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
