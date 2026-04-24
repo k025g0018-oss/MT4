@@ -28,8 +28,8 @@ struct Matrix4x4 {
 // 行列の加法
 Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
 	Matrix4x4 result;
-	for (int row = 0; row < 2; ++row) {
-		for (int col = 0; col < 2; ++col) {
+	for (int row = 0; row < 4; ++row) {
+		for (int col = 0; col < 4; ++col) {
 			result.m[row][col] = m1.m[row][col] + m2.m[row][col];
 		}
 	}
@@ -39,8 +39,8 @@ Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
 // 行列の減法
 Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2) {
 	Matrix4x4 result;
-	for (int row = 0; row < 2; ++row) {
-		for (int col = 0; col < 2; ++col) {
+	for (int row = 0; row < 4; ++row) {
+		for (int col = 0; col < 4; ++col) {
 			result.m[row][col] = m1.m[row][col] - m2.m[row][col];
 		}
 	}
@@ -81,13 +81,13 @@ Matrix4x4 Inverse(const Matrix4x4& m) {
 		a11 * a23 * a32 * a44 -
 		a11 * a22 * a34 * a43 -
 		a12 * a21 * a33 * a44 -
-		a13 * a21 * a43 * a42 -
+		a13 * a21 * a34 * a42 -
 		a14 * a21 * a32 * a43 +
 		a14 * a21 * a33 * a42 +
 		a13 * a21 * a32 * a44 +
 		a12 * a21 * a34 * a43 +
 		a12 * a23 * a31 * a44 +
-		a32 * a42 * a31 * a42 +
+		a13 * a24 * a31 * a42 +
 		a14 * a22 * a31 * a43 -
 		a14 * a23 * a31 * a42 -
 		a13 * a22 * a31 * a44 -
@@ -141,23 +141,154 @@ Matrix4x4 Inverse(const Matrix4x4& m) {
 		a13 * a22 * a34 +
 		a12 * a24 * a33
 		) * invDet;
+
+	r.m[1][0] = (
+		-a21 * a33 * a44 -
+		a23 * a34 * a41 -
+		a24 * a31 * a43 +
+		a24 * a33 * a41 +
+		a23 * a31 * a44 +
+		a21 * a34 * a43
+		) * invDet;
+
+	r.m[1][1] = (
+		a11 * a33 * a44 +
+		a13 * a34 * a41 +
+		a14 * a31 * a43 -
+		a14 * a33 * a41 -
+		a13 * a31 * a44 -
+		a11 * a34 * a43
+		) * invDet;
+
+	r.m[1][2] = (
+		-a11 * a23 * a44 -
+		a13 * a24 * a41 -
+		a14 * a21 * a43 +
+		a14 * a23 * a41 +
+		a13 * a21 * a44 +
+		a11 * a24 * a43
+		) * invDet;
+
+	r.m[1][3] = (
+		a11 * a23 * a34 +
+		a13 * a24 * a31 +
+		a14 * a21 * a33 -
+		a14 * a23 * a31 -
+		a13 * a21 * a34 -
+		a11 * a24 * a33
+		) * invDet;
+
+	r.m[2][0] = (
+		a21 * a32 * a44 +
+		a22 * a34 * a41 +
+		a24 * a31 * a42 -
+		a24 * a32 * a41 -
+		a22 * a31 * a44 -
+		a21 * a34 * a42
+		) * invDet;
+
+	r.m[2][1] = (
+		-a11 * a32 * a44 -
+		a12 * a34 * a41 -
+		a14 * a31 * a42 +
+		a14 * a32 * a41 +
+		a12 * a31 * a44 +
+		a11 * a34 * a42
+		) * invDet;
+
+	r.m[2][2] = (
+		a11 * a22 * a44 +
+		a12 * a24 * a41 +
+		a14 * a21 * a42 -
+		a14 * a22 * a41 -
+		a12 * a21 * a44 -
+		a11 * a24 * a42
+		) * invDet;
+
+
+	r.m[2][3] = (
+		-a11 * a22 * a34 -
+		a12 * a24 * a31 -
+		a14 * a21 * a32 +
+		a14 * a22 * a31 +
+		a12 * a21 * a34 +
+		a11 * a24 * a32
+		) * invDet;
+
+	r.m[3][0] = (
+		-a21 * a32 * a43 -
+		a22 * a33 * a41 -
+		a23 * a31 * a42 +
+		a23 * a32 * a41 +
+		a22 * a31 * a43 +
+		a21 * a33 * a42
+		) * invDet;
+
+	r.m[3][1] = (
+		a11 * a32 * a43 +
+		a12 * a33 * a41 +
+		a13 * a31 * a42 -
+		a13 * a32 * a41 -
+		a12 * a31 * a43 -
+		a11 * a33 * a42
+		) * invDet;
+
+	r.m[3][2] = (
+		-a11 * a22 * a43 -
+		a12 * a23 * a41 -
+		a13 * a21 * a42 +
+		a13 * a22 * a41 +
+		a12 * a21 * a43 +
+		a11 * a23 * a42
+		) * invDet;
+
+	r.m[3][3] = (
+		a11 * a22 * a33 +
+		a12 * a23 * a31 +
+		a13 * a21 * a32 -
+		a13 * a22 * a31 -
+		a12 * a21 * a33 -
+		a11 * a23 * a32
+		) * invDet;
+
+	return r;
 }
 
 // 転置行列
 Matrix4x4 Transpose(const Matrix4x4& m) {
-
+	Matrix4x4 result{};
+	// 行と列のインデックスを入れ替える
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			result.m[i][j] = m.m[j][i];
+		}
+	}
+	return result;
 }
 
 // 単位行列の作成
-Matrix4x4 MakeIdentity4x4();
+Matrix4x4 MakeIdentity4x4() {
+	Matrix4x4 result;
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			if (i == j) {
+				result.m[i][j] = 1.0f; // 対角成分は1
+			} else {
+				result.m[i][j] = 0.0f; // それ以外は0
+			}
+		}
+	}
+	return result;
+}
 
 // 4x4行列の数値表示
 static const int kRowHeight = 30;
 static const int kColumnWidth = 60;
 void MatrixScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label) {
+	Novice::ScreenPrintf(x, y, "%s", label);
 	for (int row = 0; row < 4; ++row) {
 		for (int column = 0; column < 4; ++column) {
-			Novice::ScreenPrintf(x + column * kColumnWidth, y + row * kRowHeight, "%6.02f", matrix.m[row][column],label);
+			Novice::ScreenPrintf(x + column * kColumnWidth, y + (row + 1) * kRowHeight, "%6.02f", matrix.m[row][column]);
 		}
 	}
 }
