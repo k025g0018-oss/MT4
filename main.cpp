@@ -542,6 +542,26 @@ Vector3 Cross(const Vector3& v1, const Vector3& v2) {
 	return result;
 }
 
+// Gridを表示
+void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix) {
+	const float kGridHalfWidth = 2.0f; // Gridの半分の幅
+	const uint32_t kSubdivision = 10; // 分割数
+	const float kGridEvery = (kGridHalfWidth * 2.0f) / float(kSubdivision); // 1つ文の長さ
+
+	// 奥から手前への線を順々にひいていく
+	for (uint32_t xIndex = 0; xIndex <= kSubdivision; ++xIndex) {
+		// 上の情報を使ってワールド座標系上の始点と終点を求める
+		// スクリーン座標系まで変換を掛ける
+		// 変換した座標を使って表示
+
+	}
+
+	// 左から右も同じように
+	for (uint32_t zIndex = 0; zIndex <= kSubdivision; ++zIndex) {
+
+	}
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
