@@ -2,6 +2,7 @@
 #define _USE_MATH_DEFINES
 #include <assert.h>
 #include <cmath>
+#include <imgui.h>
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
