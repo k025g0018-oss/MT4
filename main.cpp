@@ -24,10 +24,6 @@ struct Matrix4x4 {
 	float m[4][4];
 };
 
-Vector3 rotate{};
-
-Vector3 translate{};
-
 /// 関数
 // 加算
 Vector3 Add(const Vector3& v1, const Vector3& v2) {
@@ -533,6 +529,18 @@ Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, f
 	return result;
 }
 
+// クロス積
+Vector3 Cross(const Vector3& v1, const Vector3& v2) {
+	Vector3 result;
+
+	// a * b = {(a.y * b.z - a.z * b.y), (a.z * b.x - a.x * b.z), (a.x * b.y - a.y * b.x)}
+	result.x = v1.y * v2.z - v1.z * v2.y;
+	result.y = v1.z * v2.x - v1.x * v2.z;
+	result.z = v1.x * v2.y - v1.y * v2.x;
+
+	return result;
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -553,10 +561,24 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char preKeys[256] = {0};
 
 	/// 定義エリア
-	// 各種行列の計算
-	Matrix4x4 worldMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translate);
-	Matrix4x4 cameraMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, cameraPosittion);
+	// クロス積の確認用
+	Vector3 v1{1.2f, -3.9f, 2.5f};
+	Vector3 v2{2.8f, 0.4f, -1.3f};
+	Vector3 cross = Cross(v1, v2);
 
+	// 三角形のローカル座標、中心を原点
+	Vector3 kLocalVertices[3] = {
+		{0.0f, 0.5f, 0.0f}, // 上
+		{0.5f, -0.5f, 0.0f}, // 右下
+		{-0.5f, -0.5f, 0.0f}, // 左下
+	};
+
+	// 三角形の初期トランスフォーム
+	Vector3 translate = {0.0f, 0.0f, 0.0f};
+	Vector3 rotate = {0.0f, 0.0f, 0.0f};
+
+	// カメラの初期位置
+	Vector3 cameraPosition = {0.0f, 0.0f, -5.0f};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -571,6 +593,54 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
+		// w,sキーで前後に、a,dキーで左右に三角形を動かす
+		if (keys[DIK_W]) {
+			translate.z += 0.1f;
+		}
+
+		if (keys[DIK_S]) {
+			translate.z -= 0.1f;
+		}
+
+		if (keys[DIK_A]) {
+			translate.x -= 0.1f;
+		}
+
+		if (keys[DIK_D]) {
+			translate.x += 0.1f;
+		}
+
+		// y軸を回転させる、translateとrotateの値を変更させる
+		rotate.y += 0.03f;
+
+		/// 各種行列の計算
+		// ワールド行列、SRT
+		Matrix4x4 worldMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translate);
+
+		// カメラ
+		Matrix4x4 cameraMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, cameraPosition);
+
+		// ビュー行列
+		Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+
+		// 投影行列
+		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(screenSize.x) / float(screenSize.y), 0.1f, 100.0f);
+
+		// 合成行列
+		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+
+		// ビューポート行列
+		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(screenSize.x), float(screenSize.y), 0.0f, 1.0f);
+
+		// 頂点変換
+		Vector3 screenVertices[3];
+		for (uint32_t i = 0; i < 3; ++i) {
+			// ローカル空間からNDC空間
+			Vector3 ndcVertex = Transform(kLocalVertices[i], worldViewProjectionMatrix);
+			// NDC空間からスクリーン空間
+			screenVertices[i] = Transform(ndcVertex, viewportMatrix);
+		}
+
 		///
 		/// ↑更新処理ここまで
 		///
@@ -579,9 +649,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		MatrixScreenPrintf(0, 0, orthographicMatrix, "orthographicMatrix");
-		MatrixScreenPrintf(0, kRowHeight * 5, perspectiveFovMatrix, "perspectiveFovMatrix");
-		MatrixScreenPrintf(0, kRowHeight * 10, viewportMatrix, "viewportMatrix");
+		// 三角ポリゴン
+		Novice::DrawTriangle(
+			int(screenVertices[0].x), int(screenVertices[0].y),
+			int(screenVertices[1].x), int(screenVertices[1].y),
+			int(screenVertices[2].x), int(screenVertices[2].y),
+			RED,
+			kFillModeSolid
+		);
+
+		// クロス積の確認用
+		VectorScreenPrintf(0, 0, cross, "Cross");
 
 		///
 		/// ↑描画処理ここまで
