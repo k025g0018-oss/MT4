@@ -174,12 +174,20 @@ Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Ve
 Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip) {
 	Matrix4x4 result{};
 
-	result.m[0][0] = (1.0f / aspectRatio) * (fovY / 2.0f);
+	// コンタンジェントを計算 ( 1 / tan(fovY / 2) )
+	float cot = 1.0f / std::tan(fovY / 2.0f);
+
+	// tanθ = a/b, cotθ = 1 / tanθ = b/a, y * cotθ -> a * b/a = b
+
+	// result.m[0][0] = (1.0f / aspectRatio) * (fovY / 2.0f);
+	// result.m[1][1] = fovY / 2.0f;
+
+	result.m[0][0] = cot / aspectRatio;
 	result.m[0][1] = 0.0f;
 	result.m[0][2] = 0.0f;
 	result.m[0][3] = 0.0f;
 	result.m[1][0] = 0.0f;
-	result.m[1][1] = fovY / 2.0f;
+	result.m[1][1] = cot;
 	result.m[1][2] = 0.0f;
 	result.m[1][3] = 0.0f;
 	result.m[2][0] = 0.0f;
