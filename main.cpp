@@ -611,7 +611,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		}
 
 		// y軸を回転させる、translateとrotateの値を変更させる
-		rotate.y += 0.03f;
+		rotate.y += 0.05f;
 
 		/// 各種行列の計算
 		// ワールド行列、SRT
