@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <cmath>
 #include <imgui.h>
+#include <algorithm>
 
 // インクルードするファイル
 #include "Matrix4x4.h"
@@ -10,9 +11,22 @@
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
-//////////
-/// 構造体
-//////////
+/// ---構造体---
+// 線
+struct Line { // 直線
+	Vector3 origin; // 始点
+	Vector3 diff; // 終点への差分ベクトル
+};
+
+struct Ray { // 半直線
+	Vector3 origin; // 始点
+	Vector3 diff; // 終点への差分ベクトル
+};
+
+struct Segment { // 線分
+	Vector3 origin; // 始点
+	Vector3 diff; // 終点への差分ベクトル
+};
 
 /// ---関数---
 // 内積
@@ -174,6 +188,27 @@ void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, con
 	}
 }
 
+// 正射影ベクトルと最近接点
+Vector3 Project(const Vector3& v1, const Vector3& v2) {
+	float dot = Dot(v1, Normalize(v2));
+	return Normalize(v2) * dot; // スカラー倍のオーバーロードを利用
+}
+
+Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
+	// 始点から点へのベクトル
+	Vector3 v = point - segment.origin;
+
+	// 線分の向きベクトル（diff）との内積から、どの位置にいるか(t)を計算
+	// t = (v1・v2) / |v2|^2
+	float t = Dot(v, segment.diff) / powf(Length(segment.diff), 2.0f);
+
+	// 線分なので 0.0(始点) ～ 1.0(終点) の間にクランプする
+	t = max(0.0f, min(t, 1.0f));
+
+	// 始点 + 向き * t
+	return segment.origin + (segment.diff * t);
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -194,8 +229,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char preKeys[256] = {0};
 
 	/// ---定義エリア---
-	// 球体
-	Sphere sphere = {{0, 0, 0}, 1.0f};
+
+	Segment segment{{-2.0f, -1.0f, 0.0f}, {3.0f, 2.0f, 2.0f}};
+	Vector3 point{-1.5f, 0.6f, 0.6f};
+
+	// pointを線分に射影したベクトル。今回は正しく計算で来ているかを確認するために使う
+	Vector3 project = Project(point - segment.origin, segment.diff);
+
+	// この値が線分上の点を表す
+	Vector3 closestPoint = ClosestPoint(point, segment);
 
 	// カメラの初期位置
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
@@ -215,11 +257,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 
 		/// ---ImGui---
+		// 始め
 		ImGui::Begin("Window");
+
+		// 中身
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-		ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
-		ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
+		ImGui::DragFloat3("Segment origin", &segment.origin.x, 0.01f);
+		ImGui::DragFloat3("Segment diff", &segment.diff.x, 0.01f);
+		ImGui::InputFloat3("Project", &project.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+
+		// 終わり
 		ImGui::End();
 
 		/// ---行列の計算---
@@ -237,8 +285,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
+		// グリッド線
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
-		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, 0x000000FF); // 黒
+
+		// 線
+		Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
+		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
+
+		// 点
+		Sphere pointSphere{point, 0.01f}; // 1cmの弾を描画
+		Sphere closestPointSphere{closestPoint, 0.01f};
+		DrawSphere(pointSphere, viewProjectionMatrix, viewportMatrix, RED);
+		DrawSphere(closestPointSphere, viewProjectionMatrix, viewportMatrix, BLACK);
 
 		///
 		/// ↑描画処理ここまで
