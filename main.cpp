@@ -11,7 +11,7 @@
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
-/// ---構造体---
+/// --- 構造体 ---
 // 線
 struct Line { // 直線
 	Vector3 origin; // 始点
@@ -28,7 +28,13 @@ struct Segment { // 線分
 	Vector3 diff; // 終点への差分ベクトル
 };
 
-/// ---関数---
+// 球
+struct Sphere {
+	Vector3 center; // 中心点
+	float radius; // 半径
+};
+
+/// --- 関数 ---
 // 内積
 float Dot(const Vector3& v1, const Vector3& v2) {
 	float result;
@@ -242,6 +248,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// カメラの初期位置
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
 	Vector3 cameraRotate{0.25, 0.0f, 0.0f};
+
+	// 球
+	Sphere sphere[2];
+	sphere[0].center = {0.0f, 0.0f, 0.0f};
+	sphere[0].radius = 0.6f;
+	sphere[1].center = {0.0f, 0.0f, 1.0f};
+	sphere[1].radius = 0.4f;
+
+	// 2つの球の中心点間の距離を求める
+	float distance = Length(sphere[1].center - sphere[0].center);
+	// 半径の合計よりも短ければ衝突
+	if (distance <= sphere[0].radius + sphere[1].radius) {
+
+	}
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
