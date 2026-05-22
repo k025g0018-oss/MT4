@@ -141,11 +141,6 @@ void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMa
 	}
 }
 
-struct Sphere {
-	Vector3 center; // 中心点
-	float radius; // 半径
-};
-
 // Sphereを表示する
 void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
 	const uint32_t kSubdivision = 16; // 分割数
@@ -318,6 +313,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Sphere closestPointSphere{closestPoint, 0.01f};
 		DrawSphere(pointSphere, viewProjectionMatrix, viewportMatrix, RED);
 		DrawSphere(closestPointSphere, viewProjectionMatrix, viewportMatrix, BLACK);
+
+		// 球
+		DrawSphere(sphere[0], viewProjectionMatrix, viewportMatrix, 0x000000FF);
+		DrawSphere(sphere[1], viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
 		///
 		/// ↑描画処理ここまで
