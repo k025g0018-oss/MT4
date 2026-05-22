@@ -32,6 +32,7 @@ struct Segment { // 線分
 struct Sphere {
 	Vector3 center; // 中心点
 	float radius; // 半径
+	unsigned int color;
 };
 
 /// --- 関数 ---
@@ -210,6 +211,18 @@ Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
 	return segment.origin + (segment.diff * t);
 }
 
+// 球と球の当たり判定
+bool IsCollision(const Sphere& s1, const Sphere& s2) {
+	// 2つの球の中心点間の距離を求める
+	float distance = Length(s2.center - s1.center);
+
+	// 半径の合計よりも短ければ衝突
+	if (distance <= s1.radius + s2.radius) {
+		return true;
+	}
+
+	return false;
+}
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -234,12 +247,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Segment segment{{-2.0f, -1.0f, 0.0f}, {3.0f, 2.0f, 2.0f}};
 	Vector3 point{-1.5f, 0.6f, 0.6f};
 
-	// pointを線分に射影したベクトル。今回は正しく計算で来ているかを確認するために使う
-	Vector3 project = Project(point - segment.origin, segment.diff);
-
-	// この値が線分上の点を表す
-	Vector3 closestPoint = ClosestPoint(point, segment);
-
 	// カメラの初期位置
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
 	Vector3 cameraRotate{0.25, 0.0f, 0.0f};
@@ -248,8 +255,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Sphere sphere[2];
 	sphere[0].center = {0.0f, 0.0f, 0.0f};
 	sphere[0].radius = 0.6f;
+	sphere[1].color = 0x000000FF;
 	sphere[1].center = {0.0f, 0.0f, 1.0f};
 	sphere[1].radius = 0.4f;
+	sphere[1].color = 0xFFFFFFFF;
 
 	// 2つの球の中心点間の距離を求める
 	float distance = Length(sphere[1].center - sphere[0].center);
@@ -278,12 +287,22 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 中身
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-		ImGui::DragFloat3("Segment origin", &segment.origin.x, 0.01f);
-		ImGui::DragFloat3("Segment diff", &segment.diff.x, 0.01f);
-		ImGui::InputFloat3("Project", &project.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+		ImGui::DragFloat3("sphere[0].center", &sphere[0].center.x, 0.01f);
+		ImGui::DragFloat("sphere[0].radius", &sphere[0].radius, 0.01f);
+		ImGui::DragFloat3("sphere[1].center", &sphere[1].center.x, 0.01f);
+		ImGui::DragFloat("sphere[1].radius", &sphere[1].radius, 0.01f);
 
 		// 終わり
 		ImGui::End();
+
+		// --- 当たり判定 ---
+		if (IsCollision(sphere[0], sphere[1])) {
+			sphere[0].color = 0xFF0000FF;
+			sphere[1].color = 0x0000FFFF;
+		} else {
+			sphere[0].color = 0x000000FF;
+			sphere[1].color = 0xFFFFFFFF;
+		}
 
 		/// ---行列の計算---
 		Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix({1, 1, 1}, cameraRotate, cameraTranslate);
@@ -306,17 +325,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 線
 		Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
 		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
-
-		// 点
-		Sphere pointSphere{point, 0.01f}; // 1cmの弾を描画
-		Sphere closestPointSphere{closestPoint, 0.01f};
-		DrawSphere(pointSphere, viewProjectionMatrix, viewportMatrix, RED);
-		DrawSphere(closestPointSphere, viewProjectionMatrix, viewportMatrix, BLACK);
 
 		// 球
-		DrawSphere(sphere[0], viewProjectionMatrix, viewportMatrix, 0x000000FF);
-		DrawSphere(sphere[1], viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
+		DrawSphere(sphere[0], viewProjectionMatrix, viewportMatrix, sphere[0].color);
+		DrawSphere(sphere[1], viewProjectionMatrix, viewportMatrix, sphere[1].color);
 
 		///
 		/// ↑描画処理ここまで
