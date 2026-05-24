@@ -35,6 +35,12 @@ struct Sphere {
 	unsigned int color;
 };
 
+// 平面
+struct Plane {
+	Vector3 normal; // 法線
+	float distance; // 距離
+};
+
 /// --- 関数 ---
 // 内積
 float Dot(const Vector3& v1, const Vector3& v2) {
@@ -212,7 +218,7 @@ Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
 }
 
 // 球と球の当たり判定
-bool IsCollision(const Sphere& s1, const Sphere& s2) {
+bool IsCollisionSphereAndSphere(const Sphere& s1, const Sphere& s2) {
 	// 2つの球の中心点間の距離を求める
 	float distance = Length(s2.center - s1.center);
 
@@ -223,6 +229,49 @@ bool IsCollision(const Sphere& s1, const Sphere& s2) {
 
 	return false;
 }
+
+// 球と平面の当たり判定
+bool IsCollisionSphereAndPlane(const Sphere& sphere, const Plane& plane) {
+	float distanceFromPlane = Dot(sphere.center, plane.normal) - plane.distance;
+
+	// 距離の絶対値が半径以下なら衝突
+	if (std::fabs(distanceFromPlane) <= sphere.radius) {
+		return true;
+	}
+	return false;
+}
+
+// 平面の描画
+Vector3 Perpendicular(const Vector3& vector) {
+	if (vector.x != 0.0f || vector.y != 0.0f) {
+		return {-vector.y, vector.x, 0.0f};
+	}
+
+	return {0.0f, -vector.z, vector.y};
+}
+
+void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	Vector3 center = plane.normal * plane.distance; // 1
+	Vector3 perpendiculars[4];
+	perpendiculars[0] = Normalize(Perpendicular(plane.normal)); // 2
+	perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y, -perpendiculars[0].z}; // 3
+	perpendiculars[2] = Cross(plane.normal, perpendiculars[0]); // 4
+	perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y, -perpendiculars[2].z}; // 5
+	// 6
+	Vector3 points[4];
+	for (int32_t index = 0; index < 4; ++index) {
+		Vector3 extend = perpendiculars[index] * 2.0f;
+		Vector3 point = center + extend;
+		points[index] = Vector3::Transform(Vector3::Transform(point, viewProjectionMatrix), viewportMatrix);
+	}
+
+	// pointsをそれぞれ結んでDrawLineで矩形を描画する
+	Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[2].x, (int)points[2].y, color);
+	Novice::DrawLine((int)points[2].x, (int)points[2].y, (int)points[1].x, (int)points[1].y, color);
+	Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[3].x, (int)points[3].y, color);
+	Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[0].x, (int)points[0].y, color);
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -252,20 +301,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Vector3 cameraRotate{0.25, 0.0f, 0.0f};
 
 	// 球
-	Sphere sphere[2];
-	sphere[0].center = {0.0f, 0.0f, 0.0f};
-	sphere[0].radius = 0.6f;
-	sphere[1].color = 0x000000FF;
-	sphere[1].center = {0.0f, 0.0f, 1.0f};
-	sphere[1].radius = 0.4f;
-	sphere[1].color = 0xFFFFFFFF;
+	Sphere sphere;
+	sphere.center = {0.0f, 0.0f, 0.0f};
+	sphere.radius = 0.6f;
+	sphere.color = 0x000000FF;
 
-	// 2つの球の中心点間の距離を求める
-	float distance = Length(sphere[1].center - sphere[0].center);
-	// 半径の合計よりも短ければ衝突
-	if (distance <= sphere[0].radius + sphere[1].radius) {
-
-	}
+	// 平面
+	Plane plane;
+	plane.normal = {0.0f, 1.0f, 0.0f};
+	plane.distance = 1.0f;
+	sphere.color = 0x000000FF;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -287,21 +332,21 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 中身
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-		ImGui::DragFloat3("sphere[0].center", &sphere[0].center.x, 0.01f);
-		ImGui::DragFloat("sphere[0].radius", &sphere[0].radius, 0.01f);
-		ImGui::DragFloat3("sphere[1].center", &sphere[1].center.x, 0.01f);
-		ImGui::DragFloat("sphere[1].radius", &sphere[1].radius, 0.01f);
+		ImGui::DragFloat3("sphere.center", &sphere.center.x, 0.01f);
+		ImGui::DragFloat("sphere.radius", &sphere.radius, 0.01f);
+		ImGui::DragFloat3("Plane.normal", &plane.normal.x, 0.01f);
+		plane.normal = Normalize(plane.normal);
+		ImGui::DragFloat("Plane.distance", &plane.distance, 0.01f);
 
 		// 終わり
 		ImGui::End();
 
 		// --- 当たり判定 ---
-		if (IsCollision(sphere[0], sphere[1])) {
-			sphere[0].color = 0xFF0000FF;
-			sphere[1].color = 0x0000FFFF;
+		// 球と平面の当たり判定処理
+		if (IsCollisionSphereAndPlane(sphere, plane)) {
+			sphere.color = 0xFF0000FF;
 		} else {
-			sphere[0].color = 0x000000FF;
-			sphere[1].color = 0xFFFFFFFF;
+			sphere.color = 0x000000FF;
 		}
 
 		/// ---行列の計算---
@@ -327,8 +372,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
 
 		// 球
-		DrawSphere(sphere[0], viewProjectionMatrix, viewportMatrix, sphere[0].color);
-		DrawSphere(sphere[1], viewProjectionMatrix, viewportMatrix, sphere[1].color);
+		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
+
+		// 平面
+		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
 		///
 		/// ↑描画処理ここまで
