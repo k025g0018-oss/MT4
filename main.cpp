@@ -372,7 +372,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
 
 		// 球
-		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
+		// DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
 
 		// 平面
 		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
