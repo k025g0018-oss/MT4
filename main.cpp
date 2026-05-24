@@ -41,6 +41,11 @@ struct Plane {
 	float distance; // 距離
 };
 
+// 三角形
+struct Triangle {
+	Vector3 vertices[3]; // 頂点
+};
+
 /// --- 関数 ---
 // 内積
 float Dot(const Vector3& v1, const Vector3& v2) {
@@ -294,6 +299,71 @@ bool IsCollisionLineAndPlane(const Segment& segment, const Plane& plane) {
 	return false;
 }
 
+// 三角形と線の当たり判定
+bool IsCollisionTriangleAndSegment(const Triangle& triangle, const Segment& segment) {
+	// 三角形の法線を求める
+	Vector3 v01 = triangle.vertices[1] - triangle.vertices[0];
+	Vector3 v02 = triangle.vertices[2] - triangle.vertices[0];
+	Vector3 normal = Normalize(Cross(v01, v02));
+
+	// 三角形が乗っている平面の方程式のdistanceを求める
+	// Dot(normal, p) = distance
+	float distance = Dot(normal, triangle.vertices[0]);
+
+	// 線分と平面の交点パラメータ t を計算する
+	float dot = Dot(normal, segment.diff);
+	if (dot == 0.0f) {
+		return false; // 平行な場合は当たらない
+	}
+
+	float t = (distance - Dot(segment.origin, normal)) / dot;
+
+	// 線分なので t が 0.0f から 1.0f の間でなければ交点を持たない
+	if (t < 0.0f || t > 1.0f) {
+		return false;
+	}
+
+	//  交点pの座標を計算
+	Vector3 p = segment.origin + (segment.diff * t);
+
+	// 交点が三角形の内側にあるかをクロス積で判定
+	Vector3 v12 = triangle.vertices[2] - triangle.vertices[1];
+	Vector3 v20 = triangle.vertices[0] - triangle.vertices[2];
+
+	Vector3 v0p = p - triangle.vertices[0];
+	Vector3 v1p = p - triangle.vertices[1];
+	Vector3 v2p = p - triangle.vertices[2];
+
+	// 各辺と交点へのベクトルのクロス積を計算
+	Vector3 cross01 = Cross(v01, v1p);
+	Vector3 cross12 = Cross(v12, v2p);
+	Vector3 cross20 = Cross(v20, v0p);
+
+	// 全てのクロス積が、平面の法線（normal）と同じ方向を向いているかを内積でチェック
+	// すべてが 0.0f以上、もしくはすべてが0.0f以下なら内側にある
+	if (Dot(cross01, normal) >= 0.0f &&
+		Dot(cross12, normal) >= 0.0f &&
+		Dot(cross20, normal) >= 0.0f
+		) {
+		return true;
+	}
+
+	return false;
+}
+
+// 三角形の描画
+void DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	Vector3 screenVertices[3];
+	for (int i = 0; i < 3; ++i) {
+		screenVertices[i] = Vector3::Transform(Vector3::Transform(triangle.vertices[i], viewProjectionMatrix), viewportMatrix);
+	}
+
+	// 3つの頂点を線で結ぶ
+	Novice::DrawLine((int)screenVertices[0].x, (int)screenVertices[0].y, (int)screenVertices[1].x, (int)screenVertices[1].y, color);
+	Novice::DrawLine((int)screenVertices[1].x, (int)screenVertices[1].y, (int)screenVertices[2].x, (int)screenVertices[2].y, color);
+	Novice::DrawLine((int)screenVertices[2].x, (int)screenVertices[2].y, (int)screenVertices[0].x, (int)screenVertices[0].y, color);
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -339,6 +409,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	plane.distance = 1.0f;
 	sphere.color = 0x000000FF;
 
+	// 三角形
+	Triangle triangle;
+	triangle.vertices[0] = {0.0f, 1.0f, 0.0f};
+	triangle.vertices[1] = {1.0f, -0.5f, -0.5f};
+	triangle.vertices[2] = {-1.0f, -0.5f, -0.5f};
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -358,16 +434,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// 中身
 		// カメラ
+		ImGui::Text("Camera");
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-		// 球
-		ImGui::DragFloat3("sphere.center", &sphere.center.x, 0.01f);
-		ImGui::DragFloat("sphere.radius", &sphere.radius, 0.01f);
-		// 平面
-		ImGui::DragFloat3("Plane.normal", &plane.normal.x, 0.01f);
-		plane.normal = Normalize(plane.normal);
-		ImGui::DragFloat("Plane.distance", &plane.distance, 0.01f);
+
+		// 三角形
+		ImGui::Separator();
+		ImGui::Text("Triangle Vertices");
+		ImGui::DragFloat3("Triangle v0", &triangle.vertices[0].x, 0.01f);
+		ImGui::DragFloat3("Triangle v1", &triangle.vertices[1].x, 0.01f);
+		ImGui::DragFloat3("Triangle v2", &triangle.vertices[2].x, 0.01f);
+
 		// 線
+		ImGui::Separator();
+		ImGui::Text("Segment");
 		ImGui::DragFloat3("Segment origin", &segment.origin.x, 0.01f);
 		ImGui::DragFloat3("Segment diff", &baseDiff.x, 0.01f);
 		ImGui::SliderFloat("Segment Scale", &segmentScale, 0.0f, 5.0f, "%.2f");
@@ -377,8 +457,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::End();
 
 		// --- 当たり判定 ---
-		// 線と平面
-		if (IsCollisionLineAndPlane(segment, plane)) {
+		// 三角形と線
+		if (IsCollisionTriangleAndSegment(triangle, segment)) {
 			segmentColor = 0xFF0000FF;
 		} else {
 			segmentColor = 0xFFFFFFFF;
@@ -411,7 +491,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
 
 		// 平面
-		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
+		// DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
+
+		// 三角形
+		DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
 		///
 		/// ↑描画処理ここまで
