@@ -272,6 +272,28 @@ void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectionMatrix, const 
 	Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[0].x, (int)points[0].y, color);
 }
 
+// 線と平面の当たり判定
+bool IsCollisionLineAndPlane(const Segment& segment, const Plane& plane) {
+	// まず垂直判定を行うために、法線と線の内積を求める
+	float dot = Dot(plane.normal, segment.diff);
+
+	// 垂直=平行であるので、衝突しているはずがない
+	if (dot == 0.0f) {
+		return false;
+	}
+
+	// tを求める
+	float t = (plane.distance - Dot(segment.origin, plane.normal)) / dot;
+
+	// tの値と線の種類によって衝突しているかを判断する
+	// 線分なのでtが0.0f~1.0fの間であれば衝突している
+	if (t >= 0.0f && t <= 1.0f) {
+		return true;
+	}
+
+	return false;
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -293,7 +315,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	/// ---定義エリア---
 
+	// 線
 	Segment segment{{-2.0f, -1.0f, 0.0f}, {3.0f, 2.0f, 2.0f}};
+	Vector3 baseDiff = segment.diff; // 元の方向ベクトルを保存
+	float segmentScale = 1.0f; // 長さを変えるためのスケール値
+	unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
+
 	Vector3 point{-1.5f, 0.6f, 0.6f};
 
 	// カメラの初期位置
@@ -330,23 +357,31 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::Begin("Window");
 
 		// 中身
+		// カメラ
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
+		// 球
 		ImGui::DragFloat3("sphere.center", &sphere.center.x, 0.01f);
 		ImGui::DragFloat("sphere.radius", &sphere.radius, 0.01f);
+		// 平面
 		ImGui::DragFloat3("Plane.normal", &plane.normal.x, 0.01f);
 		plane.normal = Normalize(plane.normal);
 		ImGui::DragFloat("Plane.distance", &plane.distance, 0.01f);
+		// 線
+		ImGui::DragFloat3("Segment origin", &segment.origin.x, 0.01f);
+		ImGui::DragFloat3("Segment diff", &baseDiff.x, 0.01f);
+		ImGui::SliderFloat("Segment Scale", &segmentScale, 0.0f, 5.0f, "%.2f");
+		segment.diff = baseDiff * segmentScale; // 元の方向にスケールを掛け算して現在のdiffを確定させる
 
 		// 終わり
 		ImGui::End();
 
 		// --- 当たり判定 ---
-		// 球と平面の当たり判定処理
-		if (IsCollisionSphereAndPlane(sphere, plane)) {
-			sphere.color = 0xFF0000FF;
+		// 線と平面
+		if (IsCollisionLineAndPlane(segment, plane)) {
+			segmentColor = 0xFF0000FF;
 		} else {
-			sphere.color = 0x000000FF;
+			segmentColor = 0xFFFFFFFF;
 		}
 
 		/// ---行列の計算---
@@ -370,6 +405,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 線
 		Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
 		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		// 球
 		// DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
