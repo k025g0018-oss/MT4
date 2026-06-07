@@ -46,6 +46,16 @@ struct Triangle {
 	Vector3 vertices[3]; // 頂点
 };
 
+// ==========================================
+
+// ---AABB構造体---
+struct AABB {
+	Vector3 min; // 最小点
+	Vector3 max; // 最大点
+};
+
+// ==========================================
+
 /// --- 関数 ---
 // 内積
 float Dot(const Vector3& v1, const Vector3& v2) {
@@ -364,6 +374,59 @@ void DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMatri
 	Novice::DrawLine((int)screenVertices[2].x, (int)screenVertices[2].y, (int)screenVertices[0].x, (int)screenVertices[0].y, color);
 }
 
+// ==========================================
+
+// ---AABB同士の衝突判定---
+bool IsCollision(const AABB& a, const AABB& b) {
+	// X, Y, Z軸すべてで重なりがあるか判定
+	if ((a.min.x <= b.max.x && a.max.x >= b.min.x) &&
+		(a.min.y <= b.max.y && a.max.y >= b.min.y) &&
+		(a.min.z <= b.max.z && a.max.z >= b.min.z)) {
+		return true; // 衝突している
+	}
+	return false; // 衝突していない
+}
+
+// ---AABBの描画関数---
+void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	// AABBの8つの頂点を定義
+	Vector3 vertices[8] = {
+		{aabb.min.x, aabb.min.y, aabb.min.z}, // 0: 左下前
+		{aabb.max.x, aabb.min.y, aabb.min.z}, // 1: 右下前
+		{aabb.max.x, aabb.min.y, aabb.max.z}, // 2: 右下奥
+		{aabb.min.x, aabb.min.y, aabb.max.z}, // 3: 左下奥
+		{aabb.min.x, aabb.max.y, aabb.min.z}, // 4: 左上前
+		{aabb.max.x, aabb.max.y, aabb.min.z}, // 5: 右上前
+		{aabb.max.x, aabb.max.y, aabb.max.z}, // 6: 右上奥
+		{aabb.min.x, aabb.max.y, aabb.max.z}  // 7: 左上奥
+	};
+
+	// 描画用のスクリーン座標に変換
+	Vector3 screenVertices[8];
+	for (int i = 0; i < 8; ++i) {
+		Vector3 ndc = Vector3::Transform(vertices[i], viewProjectionMatrix);
+		screenVertices[i] = Vector3::Transform(ndc, viewportMatrix);
+	}
+
+	// ラインを結ぶインデックス（12本の辺）
+	int indices[12][2] = {
+		{0, 1}, {1, 2}, {2, 3}, {3, 0}, // 底面
+		{4, 5}, {5, 6}, {6, 7}, {7, 4}, // 上面
+		{0, 4}, {1, 5}, {2, 6}, {3, 7}  // 側面（柱）
+	};
+
+	// 12本の線を描画
+	for (int i = 0; i < 12; ++i) {
+		Novice::DrawLine(
+			int(screenVertices[indices[i][0]].x), int(screenVertices[indices[i][0]].y),
+			int(screenVertices[indices[i][1]].x), int(screenVertices[indices[i][1]].y),
+			color
+		);
+	}
+}
+
+// ==========================================
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -388,8 +451,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// 線
 	Segment segment{{-2.0f, -1.0f, 0.0f}, {3.0f, 2.0f, 2.0f}};
 	Vector3 baseDiff = segment.diff; // 元の方向ベクトルを保存
-	float segmentScale = 1.0f; // 長さを変えるためのスケール値
-	unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
+	// float segmentScale = 1.0f; // 長さを変えるためのスケール値
+	// unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
 
 	Vector3 point{-1.5f, 0.6f, 0.6f};
 
@@ -415,6 +478,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	triangle.vertices[1] = {1.0f, -0.5f, -0.5f};
 	triangle.vertices[2] = {-1.0f, -0.5f, -0.5f};
 
+	AABB aabb1 = {
+		{ -0.5f, -0.5f, -0.5f }, // min
+		{  0.5f,  0.5f,  0.5f }  // max
+	};
+
+	AABB aabb2 = {
+		{  1.2f,  1.2f,  1.2f }, // min
+		{  2.0f,  2.0f,  2.0f }  // max
+	};
+
+	uint32_t aabbColor = 0xFFFFFFFF;
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -438,30 +513,46 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 
-		// 三角形
+		// AABB1の操作
 		ImGui::Separator();
-		ImGui::Text("Triangle Vertices");
-		ImGui::DragFloat3("Triangle v0", &triangle.vertices[0].x, 0.01f);
-		ImGui::DragFloat3("Triangle v1", &triangle.vertices[1].x, 0.01f);
-		ImGui::DragFloat3("Triangle v2", &triangle.vertices[2].x, 0.01f);
+		ImGui::Text("aabb1");
+		ImGui::Text("AABB 1");
+		ImGui::DragFloat3("aabb1 min", &aabb1.min.x, 0.01f);
+		ImGui::DragFloat3("aabb1 max", &aabb1.max.x, 0.01f);
 
-		// 線
+		// AABB2の操作
 		ImGui::Separator();
-		ImGui::Text("Segment");
-		ImGui::DragFloat3("Segment origin", &segment.origin.x, 0.01f);
-		ImGui::DragFloat3("Segment diff", &baseDiff.x, 0.01f);
-		ImGui::SliderFloat("Segment Scale", &segmentScale, 0.0f, 5.0f, "%.2f");
-		segment.diff = baseDiff * segmentScale; // 元の方向にスケールを掛け算して現在のdiffを確定させる
+		ImGui::Text("aabb2");
+		ImGui::Text("AABB 2");
+		ImGui::DragFloat3("aabb2 min", &aabb2.min.x, 0.01f);
+		ImGui::DragFloat3("aabb2 max", &aabb2.max.x, 0.01f);
 
 		// 終わり
 		ImGui::End();
 
+		// ==========================================
+		// minとmaxが入れ替わらないようにする処理
+		aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
+		aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
+		aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
+		aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
+		aabb1.min.z = (std::min)(aabb1.min.z, aabb1.max.z);
+		aabb1.max.z = (std::max)(aabb1.min.z, aabb1.max.z);
+
+		aabb2.min.x = (std::min)(aabb2.min.x, aabb2.max.x);
+		aabb2.max.x = (std::max)(aabb2.min.x, aabb2.max.x);
+		aabb2.min.y = (std::min)(aabb2.min.y, aabb2.max.y);
+		aabb2.max.y = (std::max)(aabb2.min.y, aabb2.max.y);
+		aabb2.min.z = (std::min)(aabb2.min.z, aabb2.max.z);
+		aabb2.max.z = (std::max)(aabb2.min.z, aabb2.max.z);
+		// ==========================================
+
 		// --- 当たり判定 ---
-		// 三角形と線
-		if (IsCollisionTriangleAndSegment(triangle, segment)) {
-			segmentColor = 0xFF0000FF;
+		// aabb
+		if (IsCollision(aabb1, aabb2)) {
+			aabbColor = 0xFF0000FF; // 赤
 		} else {
-			segmentColor = 0xFFFFFFFF;
+			aabbColor = 0xFFFFFFFF; // 白
 		}
 
 		/// ---行列の計算---
@@ -485,7 +576,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 線
 		Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
 		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
+		// Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		// 球
 		// DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
@@ -494,7 +585,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
 		// 三角形
-		DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
+		//DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
+
+		// AABB1とAABB2を描画
+		DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, aabbColor);
+		DrawAABB(aabb2, viewProjectionMatrix, viewportMatrix, aabbColor);
 
 		///
 		/// ↑描画処理ここまで
