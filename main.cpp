@@ -387,6 +387,26 @@ bool IsCollision(const AABB& a, const AABB& b) {
 	return false; // 衝突していない
 }
 
+// AABBと球の衝突判定
+bool IsCollision(const AABB& aabb, const Sphere& sphere) {
+	// 最近接点を求める (各軸について、球の中心座標をAABBの最小値と最大値でクランプする)
+	Vector3 closestPoint{
+		std::clamp(sphere.center.x, aabb.min.x, aabb.max.x),
+		std::clamp(sphere.center.y, aabb.min.y, aabb.max.y),
+		std::clamp(sphere.center.z, aabb.min.z, aabb.max.z)
+	};
+
+	// 最近接点と球の中心との距離を求める
+	float distance = Length(closestPoint - sphere.center);
+
+	// 距離が半径よりも小さければ衝突
+	if (distance <= sphere.radius) {
+		return true;
+	}
+
+	return false;
+}
+
 // ---AABBの描画関数---
 void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
 	// AABBの8つの頂点を定義
@@ -462,15 +482,14 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// 球
 	Sphere sphere;
-	sphere.center = {0.0f, 0.0f, 0.0f};
+	sphere.center = { 1.0f, 0.0f, 0.0f };
 	sphere.radius = 0.6f;
-	sphere.color = 0x000000FF;
+	sphere.color = 0xFFFFFFFF;
 
 	// 平面
 	Plane plane;
 	plane.normal = {0.0f, 1.0f, 0.0f};
 	plane.distance = 1.0f;
-	sphere.color = 0x000000FF;
 
 	// 三角形
 	Triangle triangle;
@@ -478,17 +497,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	triangle.vertices[1] = {1.0f, -0.5f, -0.5f};
 	triangle.vertices[2] = {-1.0f, -0.5f, -0.5f};
 
-	AABB aabb1 = {
+	// AABBと色の初期化
+	AABB aabb = {
 		{ -0.5f, -0.5f, -0.5f }, // min
-		{  0.5f,  0.5f,  0.5f }  // max
+		{ 0.5f, 0.5f, 0.5f }     // max
 	};
-
-	AABB aabb2 = {
-		{  1.2f,  1.2f,  1.2f }, // min
-		{  2.0f,  2.0f,  2.0f }  // max
-	};
-
-	uint32_t aabbColor = 0xFFFFFFFF;
+	unsigned int aabbColor = 0xFFFFFFFF;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -513,46 +527,40 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 
-		// AABB1の操作
-		ImGui::Separator();
-		ImGui::Text("aabb1");
-		ImGui::Text("AABB 1");
-		ImGui::DragFloat3("aabb1 min", &aabb1.min.x, 0.01f);
-		ImGui::DragFloat3("aabb1 max", &aabb1.max.x, 0.01f);
-
-		// AABB2の操作
-		ImGui::Separator();
-		ImGui::Text("aabb2");
-		ImGui::Text("AABB 2");
-		ImGui::DragFloat3("aabb2 min", &aabb2.min.x, 0.01f);
-		ImGui::DragFloat3("aabb2 max", &aabb2.max.x, 0.01f);
+		ImGui::DragFloat3("AABB min", &aabb.min.x, 0.01f);
+		ImGui::DragFloat3("AABB max", &aabb.max.x, 0.01f);
+		ImGui::DragFloat3("Sphere center", &sphere.center.x, 0.01f);
+		ImGui::DragFloat("Sphere radius", &sphere.radius, 0.01f);
 
 		// 終わり
 		ImGui::End();
 
 		// ==========================================
+		
 		// minとmaxが入れ替わらないようにする処理
-		aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
-		aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
-		aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
-		aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
-		aabb1.min.z = (std::min)(aabb1.min.z, aabb1.max.z);
-		aabb1.max.z = (std::max)(aabb1.min.z, aabb1.max.z);
+		AABB tempAABB = aabb;
+		aabb.min.x = (std::min)(tempAABB.min.x, tempAABB.max.x);
+		aabb.max.x = (std::max)(tempAABB.min.x, tempAABB.max.x);
+		aabb.min.y = (std::min)(tempAABB.min.y, tempAABB.max.y);
+		aabb.max.y = (std::max)(tempAABB.min.y, tempAABB.max.y);
+		aabb.min.z = (std::min)(tempAABB.min.z, tempAABB.max.z);
+		aabb.max.z = (std::max)(tempAABB.min.z, tempAABB.max.z);
 
-		aabb2.min.x = (std::min)(aabb2.min.x, aabb2.max.x);
-		aabb2.max.x = (std::max)(aabb2.min.x, aabb2.max.x);
-		aabb2.min.y = (std::min)(aabb2.min.y, aabb2.max.y);
-		aabb2.max.y = (std::max)(aabb2.min.y, aabb2.max.y);
-		aabb2.min.z = (std::min)(aabb2.min.z, aabb2.max.z);
-		aabb2.max.z = (std::max)(aabb2.min.z, aabb2.max.z);
+		// 球
+		sphere.radius = (std::max)(0.0f, sphere.radius);
+
 		// ==========================================
 
 		// --- 当たり判定 ---
-		// aabb
-		if (IsCollision(aabb1, aabb2)) {
-			aabbColor = 0xFF0000FF; // 赤
+		// AABBと球の衝突判定
+		if (IsCollision(aabb, sphere)) {
+			// 衝突したら赤色にする
+			aabbColor = 0xFF0000FF;
+			sphere.color = 0xFF0000FF;
 		} else {
-			aabbColor = 0xFFFFFFFF; // 白
+			// 衝突していなければ白色にする
+			aabbColor = 0xFFFFFFFF;
+			sphere.color = 0xFFFFFFFF;
 		}
 
 		/// ---行列の計算---
@@ -579,7 +587,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		// 球
-		// DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
+		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
 
 		// 平面
 		// DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
@@ -587,9 +595,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 三角形
 		//DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
-		// AABB1とAABB2を描画
-		DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, aabbColor);
-		DrawAABB(aabb2, viewProjectionMatrix, viewportMatrix, aabbColor);
+		// AABB
+		DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
 
 		///
 		/// ↑描画処理ここまで
