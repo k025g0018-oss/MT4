@@ -48,10 +48,18 @@ struct Triangle {
 
 // ==========================================
 
-// ---AABB構造体---
+/// --- AABB構造体 ---
 struct AABB {
 	Vector3 min; // 最小点
 	Vector3 max; // 最大点
+};
+
+/// --- OBB構造体 ---
+// AABB + 回転 = OBB
+struct OBB {
+	Vector3 center; // 中心点
+	Vector3 orientations[3]; // 座標軸 正規化・直交必須 3x3回転行列の各行
+	Vector3 size; // 座標軸方向の長さの半分 中心から面までの距離S
 };
 
 // ==========================================
@@ -490,6 +498,81 @@ void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjectionMatrix, const Mat
 	}
 }
 
+// --- OBBをWorld座標系へ変換する行列を作成する関数 ---
+Matrix4x4 MakeOBBWorldMatrix(const OBB& obb) {
+	Matrix4x4 matrix;
+	// 3x3の回転行列成分をセット
+	matrix.m[0][0] = obb.orientations[0].x; matrix.m[0][1] = obb.orientations[0].y; matrix.m[0][2] = obb.orientations[0].z; matrix.m[0][3] = 0.0f;
+	matrix.m[1][0] = obb.orientations[1].x; matrix.m[1][1] = obb.orientations[1].y; matrix.m[1][2] = obb.orientations[1].z; matrix.m[1][3] = 0.0f;
+	matrix.m[2][0] = obb.orientations[2].x; matrix.m[2][1] = obb.orientations[2].y; matrix.m[2][2] = obb.orientations[2].z; matrix.m[2][3] = 0.0f;
+	// 平行移動成分をセット
+	matrix.m[3][0] = obb.center.x; matrix.m[3][1] = obb.center.y; matrix.m[3][2] = obb.center.z; matrix.m[3][3] = 1.0f;
+	return matrix;
+}
+
+/// --- OBBと球の衝突判定 ---
+bool IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere) {
+	// 1_OBBのWorldMatrixとその逆行列を計算
+	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
+	Matrix4x4 obbWorldMatrixInverse = Matrix4x4::Inverse(obbWorldMatrix);
+
+	// 2_球の中心をOBBのローカル空間へ変換
+	Vector3 centerInOBBLocalSpace = Vector3::Transform(sphere.center, obbWorldMatrixInverse);
+
+	// 3_ローカル空間でのAABBを作成
+	// 中心が原点(0,0,0)なので、minは-size, maxはsizeとなる
+	AABB aabbOBBLocal;
+	aabbOBBLocal.min = {-obb.size.x, -obb.size.y, -obb.size.z};
+	aabbOBBLocal.max = {obb.size.x, obb.size.y, obb.size.z};
+
+	// 4_ローカル空間での球を作成
+	Sphere sphereOBBLocal;
+	sphereOBBLocal.center = centerInOBBLocalSpace;
+	sphereOBBLocal.radius = sphere.radius;
+
+	// 5_ローカル空間でAABBと球の判定を行う
+	return IsCollisionAabbAndSphere(aabbOBBLocal, sphereOBBLocal);
+}
+
+/// --- OBB描画 ---
+void DrawOBB(const OBB& obb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	// ローカル空間での8頂点（中心が原点なので -size ～ +size）
+	Vector3 vertices[8] = {
+		{-obb.size.x, -obb.size.y, -obb.size.z}, {obb.size.x, -obb.size.y, -obb.size.z},
+		{obb.size.x, -obb.size.y, obb.size.z}, {-obb.size.x, -obb.size.y, obb.size.z},
+		{-obb.size.x, obb.size.y, -obb.size.z}, {obb.size.x, obb.size.y, -obb.size.z},
+		{obb.size.x, obb.size.y, obb.size.z}, {-obb.size.x, obb.size.y, obb.size.z}
+	};
+
+	// WorldMatrixを取得
+	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
+
+	// 各頂点をワールド座標へ変換し、さらにスクリーン座標へ変換
+	Vector3 screenVertices[8];
+	for (int i = 0; i < 8; ++i) {
+		// World変換
+		Vector3 worldPos = Vector3::Transform(vertices[i], obbWorldMatrix);
+		// ViewProjection & Viewport変換
+		Vector3 ndc = Vector3::Transform(worldPos, viewProjectionMatrix);
+		screenVertices[i] = Vector3::Transform(ndc, viewportMatrix);
+	}
+
+	// 12本の辺を描画
+	int indices[12][2] = {
+		{0, 1}, {1, 2}, {2, 3}, {3, 0}, // 底面
+		{4, 5}, {5, 6}, {6, 7}, {7, 4}, // 上面
+		{0, 4}, {1, 5}, {2, 6}, {3, 7}  // 側面
+	};
+
+	for (int i = 0; i < 12; ++i) {
+		Novice::DrawLine(
+			(int)screenVertices[indices[i][0]].x, (int)screenVertices[indices[i][0]].y,
+			(int)screenVertices[indices[i][1]].x, (int)screenVertices[indices[i][1]].y,
+			color
+		);
+	}
+}
+
 // ==========================================
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -521,7 +604,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	Vector3 baseDiff = segment.diff; // 元の方向ベクトルを保存
 	// float segmentScale = 1.0f; // 長さを変えるためのスケール値
-	unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
+	//unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
 
 	Vector3 point{-1.5f, 0.6f, 0.6f};
 
@@ -531,7 +614,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// 球
 	Sphere sphere;
-	sphere.center = {1.0f, 0.0f, 0.0f};
+	sphere.center = {0.0f, 0.0f, 0.0f};
 	sphere.radius = 0.6f;
 	sphere.color = 0xFFFFFFFF;
 
@@ -551,7 +634,21 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		.min{-0.5f, -0.5f, -0.5f},
 		.max{0.5f, 0.5f, 0.5f}
 	};
-	unsigned int aabbColor = 0xFFFFFFFF;
+	//unsigned int aabbColor = 0xFFFFFFFF;
+
+	Vector3 rotate{0.0f, 0.0f, 0.0f};
+
+	// OBB
+	OBB obb{
+		.center{-1.0f, 0.0f, 0.0f},
+		.orientations = {
+			{1.0f, 0.0f, 0.0f, },
+		{0.0f, 1.0f, 0.0f},
+		{0.0f, 0.0f, 1.0f}
+	},
+		.size{0.5f, 0.5f, 0.5f}
+	};
+	unsigned int obbColor = 0xFFFFFFFF;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -576,11 +673,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
 
-		ImGui::DragFloat3("AABB min", &aabb.min.x, 0.01f);
-		ImGui::DragFloat3("AABB max", &aabb.max.x, 0.01f);
-
-		ImGui::DragFloat3("Segment origin", &segment.origin.x, 0.01f);
-		ImGui::DragFloat3("Segment diff", &segment.diff.x, 0.01f);
+		ImGui::DragFloat3("OBB Rotate", &rotate.x, 0.01f);
+		ImGui::DragFloat3("OBB Center", &obb.center.x, 0.01f);
+		ImGui::DragFloat3("OBB Size", &obb.size.x, 0.01f);
 
 		// 終わり
 		ImGui::End();
@@ -601,13 +696,24 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// ==========================================
 
+		/// rotate変数をOBBが対象としているオブジェクトの回転とし、これを基に回転行列を作る
+		// OBBの回転行列の更新
+		Matrix4x4 rotateMatrix = Matrix4x4::Multiply(Matrix4x4::MakeRotateXMatrix(rotate.x), Matrix4x4::Multiply(Matrix4x4::MakeRotateYMatrix(rotate.y), Matrix4x4::MakeRotateZMatrix(rotate.z)));
+
+		// 回転行列から軸（Orientation）を抽出してOBBにセット
+		for (int i = 0; i < 3; ++i) {
+			obb.orientations[i].x = rotateMatrix.m[i][0];
+			obb.orientations[i].y = rotateMatrix.m[i][1];
+			obb.orientations[i].z = rotateMatrix.m[i][2];
+		}
+
 		// --- 当たり判定 ---
-		// AABBと球の衝突判定
-		if (IsCollisionAabbAndSegment(aabb, segment)) {
+		// 衝突判定
+		if (IsCollisionObbAndSphere(obb, sphere)) {
 			// 衝突していたら赤にする
-			aabbColor = 0xFF0000FF;
+			obbColor = 0xFF0000FF;
 		} else {
-			aabbColor = 0xFFFFFFFF;
+			obbColor = 0xFFFFFFFF;
 		}
 
 		/// ---行列の計算---
@@ -629,12 +735,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
 		// 線
-		Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
-		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
+		//Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
+		//Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
+		//Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		// 球
-		// DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
+		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
 
 		// 平面
 		// DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
@@ -643,7 +749,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		//DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
 		// AABB
-		DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
+		// DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
+
+		// OBB
+		DrawOBB(obb, viewProjectionMatrix, viewportMatrix, obbColor);
 
 		///
 		/// ↑描画処理ここまで
