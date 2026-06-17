@@ -88,7 +88,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	Vector3 baseDiff = segment.diff; // 元の方向ベクトルを保存
 	// float segmentScale = 1.0f; // 長さを変えるためのスケール値
-	unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
+	//unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
 
 	Vector3 point{-1.5f, 0.6f, 0.6f};
 
@@ -120,19 +120,31 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	};
 	//unsigned int aabbColor = 0xFFFFFFFF;
 
-	Vector3 rotate{0.0f, 0.0f, 0.0f};
+	Vector3 rotate1{0.0f, 0.0f, 0.0f};
+	Vector3 rotate2{-0.05f, -2.49f, 0.15f};
 
 	// OBB
-	OBB obb{
-		.center{-1.0f, 0.0f, 0.0f},
+	OBB obb1{
+		.center{0.0f, 0.0f, 0.0f},
 		.orientations = {
-			{1.0f, 0.0f, 0.0f, },
+			{1.0f, 0.0f, 0.0f},
 		{0.0f, 1.0f, 0.0f},
 		{0.0f, 0.0f, 1.0f}
 	},
-		.size{0.5f, 0.5f, 0.5f}
+		.size{0.83f, 0.26f, 0.24f}
 	};
-	unsigned int obbColor = 0xFFFFFFFF;
+	unsigned int obb1Color = 0xFFFFFFFF;
+
+	OBB obb2{
+		.center{0.9f, 0.66f, 0.78f},
+		.orientations = {
+			{1.0f, 0.0f, 0.0f},
+		{0.0f, 1.0f, 0.0f},
+		{0.0f, 0.0f, 1.0f}
+	},
+		.size{0.5f, 0.37f, 0.5f}
+	};
+	unsigned int obb2Color = 0xFFFFFFFF;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -163,10 +175,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::Separator();
 
 		// OBB
-		if (ImGui::TreeNode("OBB")) {
-			ImGui::DragFloat3("Rotate", &rotate.x, 0.01f);
-			ImGui::DragFloat3("Center", &obb.center.x, 0.01f);
-			ImGui::DragFloat3("Size", &obb.size.x, 0.01f, 0.0f, FLT_MAX);
+		if (ImGui::TreeNode("OBB1")) {
+			ImGui::DragFloat3("Rotate", &rotate1.x, 0.01f);
+			ImGui::DragFloat3("Center", &obb1.center.x, 0.01f);
+			ImGui::DragFloat3("Size", &obb1.size.x, 0.01f, 0.0f, FLT_MAX);
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("OBB2")) {
+			ImGui::DragFloat3("Rotate", &rotate2.x, 0.01f);
+			ImGui::DragFloat3("Center", &obb2.center.x, 0.01f);
+			ImGui::DragFloat3("Size", &obb2.size.x, 0.01f, 0.0f, FLT_MAX);
 			ImGui::TreePop();
 		}
 
@@ -196,30 +215,47 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// OBBのSizeは中心から面までの距離なので、0より下には下げない
 		// 0になった軸は厚み0の平面として扱う
-		obb.size.x = (std::max)(obb.size.x, 0.0f);
-		obb.size.y = (std::max)(obb.size.y, 0.0f);
-		obb.size.z = (std::max)(obb.size.z, 0.0f);
+		obb1.size.x = (std::max)(obb1.size.x, 0.0f);
+		obb1.size.y = (std::max)(obb1.size.y, 0.0f);
+		obb1.size.z = (std::max)(obb1.size.z, 0.0f);
+
+		obb2.size.x = (std::max)(obb2.size.x, 0.0f);
+		obb2.size.y = (std::max)(obb2.size.y, 0.0f);
+		obb2.size.z = (std::max)(obb2.size.z, 0.0f);
 
 		// ==========================================
 
 		/// rotate変数をOBBが対象としているオブジェクトの回転とし、これを基に回転行列を作る
 		// OBBの回転行列の更新
-		Matrix4x4 rotateMatrix = Matrix4x4::Multiply(Matrix4x4::MakeRotateXMatrix(rotate.x), Matrix4x4::Multiply(Matrix4x4::MakeRotateYMatrix(rotate.y), Matrix4x4::MakeRotateZMatrix(rotate.z)));
+		Matrix4x4 rotateMatrix1 = Matrix4x4::Multiply(
+			Matrix4x4::MakeRotateXMatrix(rotate1.x),
+			Matrix4x4::Multiply(Matrix4x4::MakeRotateYMatrix(rotate1.y), Matrix4x4::MakeRotateZMatrix(rotate1.z))
+		);
+
+		Matrix4x4 rotateMatrix2 = Matrix4x4::Multiply(
+			Matrix4x4::MakeRotateXMatrix(rotate2.x),
+			Matrix4x4::Multiply(Matrix4x4::MakeRotateYMatrix(rotate2.y), Matrix4x4::MakeRotateZMatrix(rotate2.z))
+		);
 
 		// 回転行列から軸（Orientation）を抽出してOBBにセット
 		for (int i = 0; i < 3; ++i) {
-			obb.orientations[i].x = rotateMatrix.m[i][0];
-			obb.orientations[i].y = rotateMatrix.m[i][1];
-			obb.orientations[i].z = rotateMatrix.m[i][2];
+			obb1.orientations[i].x = rotateMatrix1.m[i][0];
+			obb1.orientations[i].y = rotateMatrix1.m[i][1];
+			obb1.orientations[i].z = rotateMatrix1.m[i][2];
+		}
+
+		for (int i = 0; i < 3; ++i) {
+			obb2.orientations[i].x = rotateMatrix2.m[i][0];
+			obb2.orientations[i].y = rotateMatrix2.m[i][1];
+			obb2.orientations[i].z = rotateMatrix2.m[i][2];
 		}
 
 		// --- 当たり判定 ---
 		// 衝突判定
-		if (Collision3D::IsCollisionObbAndSegment(obb, segment)) {
-			// 衝突していたら赤にする
-			obbColor = 0xFF0000FF;
+		if (Collision3D::IsCollisionObbAndObb(obb1, obb2)) {
+			obb1Color = 0xFF0000FF;
 		} else {
-			obbColor = 0xFFFFFFFF;
+			obb1Color = 0xFFFFFFFF;
 		}
 
 		/// ---行列の計算---
@@ -241,9 +277,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
 		// 線
-		Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
-		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
+		// Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
+		// Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
+		// Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		// 球
 		// Collision3D::DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
@@ -258,7 +294,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// Collision3D::DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
 
 		// OBB
-		Collision3D::DrawOBB(obb, viewProjectionMatrix, viewportMatrix, obbColor);
+		Collision3D::DrawOBB(obb1, viewProjectionMatrix, viewportMatrix, obb1Color);
+		Collision3D::DrawOBB(obb2, viewProjectionMatrix, viewportMatrix, obb2Color);
 
 		///
 		/// ↑描画処理ここまで

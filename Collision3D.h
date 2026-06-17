@@ -85,14 +85,17 @@ public:
 	static bool IsCollisionAabbAndSegment(const AABB& aabb, const Segment& segment);
 
 	/// --- OBB ---
+	// OBBをWorld座標系へ変換する行列を作成する関数
+	static Matrix4x4 MakeOBBWorldMatrix(const OBB& obb);
+
 	// OBBと球の衝突判定
 	static bool IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere);
 
 	// OBBと線の衝突判定
 	static bool IsCollisionObbAndSegment(const OBB& obb, const Segment& segment);
 
-	// OBBをWorld座標系へ変換する行列を作成する関数
-	static Matrix4x4 MakeOBBWorldMatrix(const OBB& obb);
+	// OBBとOBBの衝突判定
+	static bool IsCollisionObbAndObb(const OBB& obb1, const OBB& obb2);
 
 	// ==========================================
 
@@ -109,5 +112,12 @@ public:
 	static void DrawOBB(const OBB& obb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color);
 
 private:
+	// 平面描画用の垂直ベクトルを求める
 	static Vector3 Perpendicular(const Vector3& vector);
+
+	// OBBの8頂点をワールド座標で求める
+	static void GetObbVertices(const OBB& obb, Vector3 vertices[8]);
+
+	// 指定した軸で2つのOBBが分離しているか判定する
+	static bool IsSeparatedOnAxis(const Vector3& axis, const Vector3 vertices1[8], const Vector3 vertices2[8]);
 };

@@ -194,6 +194,18 @@ bool Collision3D::IsCollisionAabbAndSegment(const AABB& aabb, const Segment& seg
 	return true;
 }
 
+// --- OBBをWorld座標系へ変換する行列を作成する関数 ---
+Matrix4x4 Collision3D::MakeOBBWorldMatrix(const OBB& obb) {
+	Matrix4x4 matrix;
+	// 3x3の回転行列成分をセット
+	matrix.m[0][0] = obb.orientations[0].x; matrix.m[0][1] = obb.orientations[0].y; matrix.m[0][2] = obb.orientations[0].z; matrix.m[0][3] = 0.0f;
+	matrix.m[1][0] = obb.orientations[1].x; matrix.m[1][1] = obb.orientations[1].y; matrix.m[1][2] = obb.orientations[1].z; matrix.m[1][3] = 0.0f;
+	matrix.m[2][0] = obb.orientations[2].x; matrix.m[2][1] = obb.orientations[2].y; matrix.m[2][2] = obb.orientations[2].z; matrix.m[2][3] = 0.0f;
+	// 平行移動成分をセット
+	matrix.m[3][0] = obb.center.x; matrix.m[3][1] = obb.center.y; matrix.m[3][2] = obb.center.z; matrix.m[3][3] = 1.0f;
+	return matrix;
+}
+
 /// --- OBBと球の衝突判定 ---
 bool Collision3D::IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere) {
 	// 1_OBBのWorldMatrixとその逆行列を計算
@@ -246,16 +258,94 @@ bool Collision3D::IsCollisionObbAndSegment(const OBB& obb, const Segment& segmen
 	return IsCollisionAabbAndSegment(localAabb, localSegment);
 }
 
-// --- OBBをWorld座標系へ変換する行列を作成する関数 ---
-Matrix4x4 Collision3D::MakeOBBWorldMatrix(const OBB& obb) {
-	Matrix4x4 matrix;
-	// 3x3の回転行列成分をセット
-	matrix.m[0][0] = obb.orientations[0].x; matrix.m[0][1] = obb.orientations[0].y; matrix.m[0][2] = obb.orientations[0].z; matrix.m[0][3] = 0.0f;
-	matrix.m[1][0] = obb.orientations[1].x; matrix.m[1][1] = obb.orientations[1].y; matrix.m[1][2] = obb.orientations[1].z; matrix.m[1][3] = 0.0f;
-	matrix.m[2][0] = obb.orientations[2].x; matrix.m[2][1] = obb.orientations[2].y; matrix.m[2][2] = obb.orientations[2].z; matrix.m[2][3] = 0.0f;
-	// 平行移動成分をセット
-	matrix.m[3][0] = obb.center.x; matrix.m[3][1] = obb.center.y; matrix.m[3][2] = obb.center.z; matrix.m[3][3] = 1.0f;
-	return matrix;
+/// --- OBBとOBBの衝突判定 ---
+// OBBの8頂点をワールド座標で求める
+void Collision3D::GetObbVertices(const OBB& obb, Vector3 vertices[8]) {
+	// 1_OBBローカル空間での8頂点を作る
+	Vector3 localVertices[8] = {
+		{-obb.size.x, -obb.size.y, -obb.size.z}, {obb.size.x, -obb.size.y, -obb.size.z},
+		{obb.size.x, -obb.size.y, obb.size.z}, {-obb.size.x, -obb.size.y, obb.size.z},
+		{-obb.size.x, obb.size.y, -obb.size.z}, {obb.size.x, obb.size.y, -obb.size.z},
+		{obb.size.x, obb.size.y, obb.size.z}, {-obb.size.x, obb.size.y, obb.size.z}
+	};
+
+	// 2_OBBの姿勢と位置からWorld行列を作る
+	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
+
+	// 3_8頂点をワールド座標へ変換する
+	for (int i = 0; i < 8; ++i) {
+		vertices[i] = Vector3::Transform(localVertices[i], obbWorldMatrix);
+	}
+}
+
+// 指定した軸で2つのOBBが分離しているか判定する
+bool Collision3D::IsSeparatedOnAxis(const Vector3& axis, const Vector3 vertices1[8], const Vector3 vertices2[8]) {
+	// 1_長さ0の軸は分離軸として使えないので無視する
+	if (Vector3::Length(axis) == 0.0f) {
+		return false;
+	}
+
+	// 2_射影の計算を安定させるため、軸を正規化する
+	Vector3 normalizedAxis = Vector3::Normalize(axis);
+
+	// 3_それぞれのOBBの頂点を軸に射影し、最小値と最大値を求める
+	float min1 = Vector3::Dot(vertices1[0], normalizedAxis);
+	float max1 = min1;
+	float min2 = Vector3::Dot(vertices2[0], normalizedAxis);
+	float max2 = min2;
+
+	for (int i = 1; i < 8; ++i) {
+		float projection1 = Vector3::Dot(vertices1[i], normalizedAxis);
+		min1 = (std::min)(min1, projection1);
+		max1 = (std::max)(max1, projection1);
+
+		float projection2 = Vector3::Dot(vertices2[i], normalizedAxis);
+		min2 = (std::min)(min2, projection2);
+		max2 = (std::max)(max2, projection2);
+	}
+
+	// 4_影の長さの合計より、二つの影全体の長さが大きければ隙間がある
+	float sumSpan = (max1 - min1) + (max2 - min2);
+	float longSpan = (std::max)(max1, max2) - (std::min)(min1, min2);
+
+	// 5_隙間があれば、この軸は分離軸なので衝突していない
+	return sumSpan < longSpan;
+}
+
+// OBBとOBBの衝突判定
+bool Collision3D::IsCollisionObbAndObb(const OBB& obb1, const OBB& obb2) {
+	// 1_分離軸へ射影するため、二つのOBBの8頂点をワールド座標で求める
+	Vector3 vertices1[8];
+	Vector3 vertices2[8];
+	GetObbVertices(obb1, vertices1);
+	GetObbVertices(obb2, vertices2);
+
+	// 2_OBBの面法線は、それぞれのローカル軸と同じなので候補軸に入れる
+	Vector3 axes[15];
+	int axisCount = 0;
+
+	for (int i = 0; i < 3; ++i) {
+		axes[axisCount++] = obb1.orientations[i];
+		axes[axisCount++] = obb2.orientations[i];
+	}
+
+	// 3_二つのOBBの辺方向の組み合わせからクロス積を作る
+	// 3本 x 3本 = 9本の分離軸候補
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			axes[axisCount++] = Vector3::Cross(obb1.orientations[i], obb2.orientations[j]);
+		}
+	}
+
+	// 4_15本の候補軸をすべて調べ、1本でも分離軸があれば衝突していない
+	for (int i = 0; i < axisCount; ++i) {
+		if (IsSeparatedOnAxis(axes[i], vertices1, vertices2)) {
+			return false;
+		}
+	}
+
+	// 5_どの軸でも分離していなければ衝突している
+	return true;
 }
 
 // Sphereを表示する
