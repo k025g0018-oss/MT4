@@ -1,4 +1,4 @@
-#include <Novice.h>
+﻿#include <Novice.h>
 #define _USE_MATH_DEFINES
 #include <assert.h>
 #include <cmath>
@@ -417,46 +417,46 @@ bool IsCollisionAabbAndSphere(const AABB& aabb, const Sphere& sphere) {
 
 /// --- AABBと線分の衝突判定 ---
 bool IsCollisionAabbAndSegment(const AABB& aabb, const Segment& segment) {
-	// === X軸の判定 ===
-	float txMin = (aabb.min.x - segment.origin.x) / segment.diff.x;
-	float txMax = (aabb.max.x - segment.origin.x) / segment.diff.x;
-	float tNearX = min(txMin, txMax);
-	float tFarX = max(txMin, txMax);
+	// 1_線分上の位置を表すtの範囲を用意する
+	// t=0.0fが始点、t=1.0fが終点
+	float tMin = 0.0f;
+	float tMax = 1.0f;
 
-	// === Y軸の判定 ===
-	float tyMin = (aabb.min.y - segment.origin.y) / segment.diff.y;
-	float tyMax = (aabb.max.y - segment.origin.y) / segment.diff.y;
-	float tNearY = min(tyMin, tyMax);
-	float tFarY = max(tyMin, tyMax);
+	// 2_X,Y,Zを同じ処理で判定できるように配列へまとめる
+	const float origins[3] = {segment.origin.x, segment.origin.y, segment.origin.z};
+	const float diffs[3] = {segment.diff.x, segment.diff.y, segment.diff.z};
+	const float mins[3] = {aabb.min.x, aabb.min.y, aabb.min.z};
+	const float maxs[3] = {aabb.max.x, aabb.max.y, aabb.max.z};
 
-	// === Z軸の判定 ===
-	float tzMin = (aabb.min.z - segment.origin.z) / segment.diff.z;
-	float tzMax = (aabb.max.z - segment.origin.z) / segment.diff.z;
-	float tNearZ = min(tzMin, tzMax);
-	float tFarZ = max(tzMin, tzMax);
+	// 3_X,Y,Zそれぞれの軸で、線分がAABBの範囲に入るtを調べる
+	for (int axis = 0; axis < 3; ++axis) {
+		// 4_線分がこの軸と平行なら、始点が範囲外の時点で当たらない
+		if (diffs[axis] == 0.0f) {
+			if (origins[axis] < mins[axis] || origins[axis] > maxs[axis]) {
+				return false;
+			}
+			continue;
+		}
 
-	// === 交差判定 ===
-	// tMin は各軸の tNear のうち「一番大きい」ものを取る
-	float tMin = max(max(tNearX, tNearY), tNearZ);
-	// tMax は各軸の tFar のうち「一番小さい」ものを取る
-	float tMax = min(min(tFarX, tFarY), tFarZ);
+		// 5_AABBのmin面とmax面に到達するtを求める
+		float t1 = (mins[axis] - origins[axis]) / diffs[axis];
+		float t2 = (maxs[axis] - origins[axis]) / diffs[axis];
 
-	// NaN（非数）になってしまった場合は計算不能なので衝突していないとみなす
-	if (std::isnan(tMin) || std::isnan(tMax)) {
-		return false;
+		// 6_近い方を入口、遠い方を出口として扱う
+		float tNear = (std::min)(t1, t2);
+		float tFar = (std::max)(t1, t2);
+
+		// 7_全ての軸で共通してAABB内にいるtの範囲を狭める
+		tMin = (std::max)(tMin, tNear);
+		tMax = (std::min)(tMax, tFar);
+
+		// 8_共通範囲がなくなったら衝突していない
+		if (tMin > tMax) {
+			return false;
+		}
 	}
 
-	// 衝突していない条件1: tMin が tMax を超えている（AABBをすり抜けている）
-	if (tMin > tMax) {
-		return false;
-	}
-
-	// 衝突していない条件2: 線分としての範囲外（tが0～1の範囲にない）
-	if (tMin > 1.0f || tMax < 0.0f) {
-		return false;
-	}
-
-	// 全ての条件をクリアしたら衝突
+	// 9_全ての軸で共通範囲が残っていれば衝突している
 	return true;
 }
 
@@ -534,6 +534,34 @@ bool IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere) {
 	return IsCollisionAabbAndSphere(aabbOBBLocal, sphereOBBLocal);
 }
 
+/// --- OBBと線の衝突判定 ---
+bool IsCollisionObbAndSegment(const OBB& obb, const Segment& segment) {
+	// 1_OBBの向きと位置から、OBBのワールド行列を作る
+	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
+
+	// 2_逆行列を作り、ワールド空間からOBBローカル空間へ戻せるようにする
+	Matrix4x4 obbInverse = Matrix4x4::Inverse(obbWorldMatrix);
+
+	// 3_線分の始点と終点をOBBローカル空間へ変換する
+	Vector3 localOrigin = Vector3::Transform(segment.origin, obbInverse);
+	Vector3 localEnd = Vector3::Transform(segment.origin + segment.diff, obbInverse);
+
+	// 4_OBBローカル空間では、OBBは原点中心のAABBとして扱える
+	AABB localAabb{
+		.min{-obb.size.x, -obb.size.y, -obb.size.z},
+		.max{obb.size.x, obb.size.y, obb.size.z},
+	};
+
+	// 5_OBBローカル空間で判定するための線分を作り直す
+	Segment localSegment{
+		.origin = localOrigin,
+		.diff = localEnd - localOrigin,
+	};
+
+	// 6_OBBと線分の判定を、AABBと線分の判定に置き換える
+	return IsCollisionAabbAndSegment(localAabb, localSegment);
+}
+
 /// --- OBB描画 ---
 void DrawOBB(const OBB& obb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
 	// ローカル空間での8頂点（中心が原点なので -size ～ +size）
@@ -598,13 +626,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// 線
 	Segment segment{
-		.origin{-0.7f, 0.3f, 0.0f},
-		.diff{2.0f, -0.5f, 0.0f}
+		.origin{-0.8f, -0.3f, 0.0f},
+		.diff{0.5f, 0.5f, 0.5f},
 	};
 
 	Vector3 baseDiff = segment.diff; // 元の方向ベクトルを保存
 	// float segmentScale = 1.0f; // 長さを変えるためのスケール値
-	//unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
+	unsigned int segmentColor = 0xFFFFFFFF; // 線の描画色
 
 	Vector3 point{-1.5f, 0.6f, 0.6f};
 
@@ -677,6 +705,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::DragFloat3("OBB Center", &obb.center.x, 0.01f);
 		ImGui::DragFloat3("OBB Size", &obb.size.x, 0.01f);
 
+		// 線
+		ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f);
+		ImGui::DragFloat3("Segment Diff", &segment.diff.x, 0.01f);
+
 		// 終わり
 		ImGui::End();
 
@@ -690,9 +722,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		aabb.max.y = (std::max)(tempAABB.min.y, tempAABB.max.y);
 		aabb.min.z = (std::min)(tempAABB.min.z, tempAABB.max.z);
 		aabb.max.z = (std::max)(tempAABB.min.z, tempAABB.max.z);
-
-		// 球
-		sphere.radius = (std::max)(0.0f, sphere.radius);
 
 		// ==========================================
 
@@ -709,7 +738,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// --- 当たり判定 ---
 		// 衝突判定
-		if (IsCollisionObbAndSphere(obb, sphere)) {
+		if (IsCollisionObbAndSegment(obb, segment)) {
 			// 衝突していたら赤にする
 			obbColor = 0xFF0000FF;
 		} else {
@@ -735,12 +764,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
 		// 線
-		//Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
-		//Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
-		//Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
+		Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
+		Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		// 球
-		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
+		// DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
 
 		// 平面
 		// DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
