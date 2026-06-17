@@ -4,6 +4,7 @@
 #include <cmath>
 #include <imgui.h>
 #include <algorithm>
+#include <cfloat>
 
 // インクルードするファイル
 #include "Vector2.h"
@@ -152,17 +153,32 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// 中身
 		// カメラ
-		ImGui::Text("Camera");
-		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
-		ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
+		if (ImGui::TreeNode("Camera")) {
+			ImGui::DragFloat3("Translate", &cameraTranslate.x, 0.01f);
+			ImGui::DragFloat3("Rotate", &cameraRotate.x, 0.01f);
+			ImGui::TreePop();
+		}
 
-		ImGui::DragFloat3("OBB Rotate", &rotate.x, 0.01f);
-		ImGui::DragFloat3("OBB Center", &obb.center.x, 0.01f);
-		ImGui::DragFloat3("OBB Size", &obb.size.x, 0.01f);
+		// 区切り線
+		ImGui::Separator();
+
+		// OBB
+		if (ImGui::TreeNode("OBB")) {
+			ImGui::DragFloat3("Rotate", &rotate.x, 0.01f);
+			ImGui::DragFloat3("Center", &obb.center.x, 0.01f);
+			ImGui::DragFloat3("Size", &obb.size.x, 0.01f, 0.0f, FLT_MAX);
+			ImGui::TreePop();
+		}
+
+		// 区切り線
+		ImGui::Separator();
 
 		// 線
-		ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f);
-		ImGui::DragFloat3("Segment Diff", &segment.diff.x, 0.01f);
+		if (ImGui::TreeNode("Segment")) {
+			ImGui::DragFloat3("Origin", &segment.origin.x, 0.01f);
+			ImGui::DragFloat3("Diff", &segment.diff.x, 0.01f);
+			ImGui::TreePop();
+		}
 
 		// 終わり
 		ImGui::End();
@@ -177,6 +193,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		aabb.max.y = (std::max)(tempAABB.min.y, tempAABB.max.y);
 		aabb.min.z = (std::min)(tempAABB.min.z, tempAABB.max.z);
 		aabb.max.z = (std::max)(tempAABB.min.z, tempAABB.max.z);
+
+		// OBBのSizeは中心から面までの距離なので、0より下には下げない
+		// 0になった軸は厚み0の平面として扱う
+		obb.size.x = (std::max)(obb.size.x, 0.0f);
+		obb.size.y = (std::max)(obb.size.y, 0.0f);
+		obb.size.z = (std::max)(obb.size.z, 0.0f);
 
 		// ==========================================
 

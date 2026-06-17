@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-// ---Vector4---
+// --- Vector4 ---
 struct Vector4 {
 	float x, y, z, w;
 };

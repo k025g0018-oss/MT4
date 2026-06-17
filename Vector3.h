@@ -3,7 +3,7 @@
 // 前方宣言
 struct Matrix4x4;
 
-// ---Vector3---
+// --- Vector3 ---
 struct Vector3 {
 	float x, y, z;
 

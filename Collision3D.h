@@ -62,26 +62,41 @@ public:
 
 	// 球と球の当たり判定
 	static bool IsCollisionSphereAndSphere(const Sphere& s1, const Sphere& s2);
+
 	// 球と平面の当たり判定
 	static bool IsCollisionSphereAndPlane(const Sphere& sphere, const Plane& plane);
+
 	// 線と平面の当たり判定
 	static bool IsCollisionLineAndPlane(const Segment& segment, const Plane& plane);
+
 	// 三角形と線の当たり判定
 	static bool IsCollisionTriangleAndSegment(const Triangle& triangle, const Segment& segment);
-	// ---AABB同士の衝突判定---
+
+	// ==========================================
+
+	/// --- AABB ---
+	// AABB同士の衝突判定
 	static bool IsCollisionAabbAndAabb(const AABB& a, const AABB& b);
+
 	// AABBと球の衝突判定
 	static bool IsCollisionAabbAndSphere(const AABB& aabb, const Sphere& sphere);
-	/// --- AABBと線分の衝突判定 ---
+
+	// AABBと線分の衝突判定
 	static bool IsCollisionAabbAndSegment(const AABB& aabb, const Segment& segment);
-	/// --- OBBと球の衝突判定 ---
+
+	/// --- OBB ---
+	// OBBと球の衝突判定
 	static bool IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere);
-	/// --- OBBと線の衝突判定 ---
+
+	// OBBと線の衝突判定
 	static bool IsCollisionObbAndSegment(const OBB& obb, const Segment& segment);
 
-	/// --- OBBをWorld座標系へ変換する行列を作成する関数 ---
+	// OBBをWorld座標系へ変換する行列を作成する関数
 	static Matrix4x4 MakeOBBWorldMatrix(const OBB& obb);
 
+	// ==========================================
+
+	/// --- 描画 ---
 	// Sphereを表示する
 	static void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color);
 	// 平面の描画
