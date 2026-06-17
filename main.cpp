@@ -159,7 +159,48 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
-		/// ---ImGui---
+		/// --- Mouse Camera Control ---
+		// 1_ImGuiを操作している時は、マウス操作でカメラが動かないようにする
+		ImGuiIO& io = ImGui::GetIO();
+
+		if (!io.WantCaptureMouse) {
+			const float kCameraRotateSpeed = 0.005f;
+			const float kCameraMoveSpeed = 0.01f;
+			const float kCameraZoomSpeed = 0.3f;
+
+			// 2_左ドラッグでカメラを回転させる
+			// 横移動はY軸回転、縦移動はX軸回転として扱う
+			if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+				ImVec2 drag = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+
+				cameraRotate.y += drag.x * kCameraRotateSpeed;
+				cameraRotate.x += drag.y * kCameraRotateSpeed;
+
+				// 3_真上や真下を向きすぎると操作が反転しやすいので、X回転を制限する
+				cameraRotate.x = (std::clamp)(cameraRotate.x, -1.45f, 1.45f);
+
+				ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+			}
+
+			// 4_右ドラッグでカメラを上下左右に平行移動させる
+			// 視点の向きは変えず、見たい位置をずらすための操作
+			if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
+				ImVec2 drag = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
+
+				cameraTranslate.x -= drag.x * kCameraMoveSpeed;
+				cameraTranslate.y += drag.y * kCameraMoveSpeed;
+
+				ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
+			}
+
+			// 5_マウスホイールでカメラを前後に移動させる
+			// 距離調整をすぐ行えるようにする
+			if (io.MouseWheel != 0.0f) {
+				cameraTranslate.z += io.MouseWheel * kCameraZoomSpeed;
+			}
+		}
+
+		/// --- ImGui ---
 		// 始め
 		ImGui::Begin("Window");
 
@@ -168,6 +209,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		if (ImGui::TreeNode("Camera")) {
 			ImGui::DragFloat3("Translate", &cameraTranslate.x, 0.01f);
 			ImGui::DragFloat3("Rotate", &cameraRotate.x, 0.01f);
+
+			// 区切り線
+			ImGui::Separator();
+
+			// マウスのカメラ操作
+			ImGui::Text("Left Drag  : Rotate Camera");
+			ImGui::Text("Right Drag : Move Camera");
+			ImGui::Text("MouseWheel : Move Forward / Back");
+
 			ImGui::TreePop();
 		}
 
