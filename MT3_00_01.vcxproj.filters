@@ -23,17 +23,41 @@
     <Filter Include="KamataEngine\Source\Math\Vector">
       <UniqueIdentifier>{762b8e37-e6da-47f4-90a1-62f9c39acd49}</UniqueIdentifier>
     </Filter>
+    <Filter Include="KamataEngine\Source\Math\Vector\Vector2">
+      <UniqueIdentifier>{7db54425-c861-4cda-b71f-3e05af73501c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="KamataEngine\Source\Math\Vector\Vector3">
+      <UniqueIdentifier>{9d07ace6-2856-48e5-adeb-9f2e58e80733}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="KamataEngine\Source\Math\Vector\Vector4">
+      <UniqueIdentifier>{0e893b7e-c24a-446b-9920-21c8d9f6185d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="KamataEngine\Source\Math\Collision">
+      <UniqueIdentifier>{84f32bd7-5864-4d31-8b85-15f472022442}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="KamataEngine\Source\Math\Collision\Collision3D">
+      <UniqueIdentifier>{d80664e4-19be-48e4-ae65-6344c7edd0f6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="C:\KamataEngine\Adapter\Novice.cpp">
       <Filter>KamataEngine\Adapter</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\CG2\DirectXGame\Matrix4x4.cpp">
+    <ClCompile Include="Matrix4x4.cpp">
       <Filter>KamataEngine\Source\Math\Matrix4x4</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\CG2\DirectXGame\Vector.cpp">
-      <Filter>KamataEngine\Source\Math\Vector</Filter>
+    <ClCompile Include="Vector2.cpp">
+      <Filter>KamataEngine\Source\Math\Vector\Vector2</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector4.cpp">
+      <Filter>KamataEngine\Source\Math\Vector\Vector4</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector3.cpp">
+      <Filter>KamataEngine\Source\Math\Vector\Vector3</Filter>
+    </ClCompile>
+    <ClCompile Include="Collision3D.cpp">
+      <Filter>KamataEngine\Source\Math\Collision\Collision3D</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -118,11 +142,20 @@
     <ClInclude Include="C:\KamataEngine\DirectXGame\2d\ImGuiManager.h">
       <Filter>KamataEngine\Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\CG2\DirectXGame\Matrix4x4.h">
+    <ClInclude Include="Matrix4x4.h">
       <Filter>KamataEngine\Source\Math\Matrix4x4</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\CG2\DirectXGame\Vector.h">
-      <Filter>KamataEngine\Source\Math\Vector</Filter>
+    <ClInclude Include="Vector2.h">
+      <Filter>KamataEngine\Source\Math\Vector\Vector2</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector4.h">
+      <Filter>KamataEngine\Source\Math\Vector\Vector4</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector3.h">
+      <Filter>KamataEngine\Source\Math\Vector\Vector3</Filter>
+    </ClInclude>
+    <ClInclude Include="Collision3D.h">
+      <Filter>KamataEngine\Source\Math\Collision\Collision3D</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

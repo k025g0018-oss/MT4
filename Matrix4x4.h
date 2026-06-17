@@ -1,9 +1,6 @@
-#pragma once
+﻿#pragma once
 
-// 前方宣言
-struct Matrix4x4;
-
-#include "Vector.h"
+#include "Vector3.h"
 
 struct Matrix4x4 {
 	float m[4][4];
@@ -46,5 +43,8 @@ struct Matrix4x4 {
 	static Matrix4x4 MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip);
 
 	// ビューポート変換行列
-	static Matrix4x4 MakeViewportMatrix(float x, float y, float width, float height, float minDepth, float maxDepth);
+	static Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth);
+
+	// 4x4行列の数値表示
+	static void ScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label);
 };

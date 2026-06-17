@@ -1,4 +1,5 @@
-#include "Matrix4x4.h"
+﻿#include "Matrix4x4.h"
+#include <Novice.h>
 #include <cmath>
 
 // 単位行列の作成
@@ -396,7 +397,7 @@ Matrix4x4 Matrix4x4::MakeOrthographicMatrix(float left, float top, float right, 
 }
 
 // ビューポート変換行列
-Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth) {
+Matrix4x4 Matrix4x4::MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth) {
 	Matrix4x4 result{};
 
 	result.m[0][0] = width / 2.0f;
@@ -417,4 +418,15 @@ Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, f
 	result.m[3][3] = 1.0f;
 
 	return result;
+}
+// 4x4行列の数値表示
+void Matrix4x4::ScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label) {
+	static const int kRowHeight = 30;
+	static const int kColumnWidth = 60;
+	Novice::ScreenPrintf(x, y, "%s", label);
+	for (int row = 0; row < 4; ++row) {
+		for (int column = 0; column < 4; ++column) {
+			Novice::ScreenPrintf(x + column * kColumnWidth, y + (row + 1) * kRowHeight, "%6.02f", matrix.m[row][column]);
+		}
+	}
 }
