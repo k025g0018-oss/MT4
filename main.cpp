@@ -59,6 +59,58 @@ void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMa
 	}
 }
 
+// 3次元空間に2次ベジェ曲線を描画
+void DrawBezier(
+	const Vector3& controlPoint0,
+	const Vector3& controlPoint1,
+	const Vector3& controlPoint2,
+	const Matrix4x4& viewProjectionMatrix,
+	const Matrix4x4& viewportMatrix,
+	uint32_t color
+) {
+	// 曲線を32本の短い線分に分けて描画する
+	const uint32_t kSubdivision = 32;
+
+	for (uint32_t i = 0; i < kSubdivision; ++i) {
+		// 現在の線分の始点と終点に対応する割合を求める
+		float t0 = static_cast<float>(i) / kSubdivision;
+		float t1 = static_cast<float>(i + 1) / kSubdivision;
+
+		// 制御点0と1、制御点1と2の間をt0で線形補間
+		Vector3 p01 = Vector3::Lerp(controlPoint0, controlPoint1, t0);
+		Vector3 p12 = Vector3::Lerp(controlPoint1, controlPoint2, t0);
+
+		// 2つの補間点をさらに補間して、曲線上の始点を求める
+		Vector3 point0 = Vector3::Lerp(p01, p12, t0);
+
+		// 制御点0と1、制御点1と2の間をt1で線形補間
+		p01 = Vector3::Lerp(controlPoint0, controlPoint1, t1);
+		p12 = Vector3::Lerp(controlPoint1, controlPoint2, t1);
+
+		// 2つの補間点をさらに補間して、曲線上の終点を求める
+		Vector3 point1 = Vector3::Lerp(p01, p12, t1);
+
+		// 曲線上の2点をワールド座標からスクリーン座標へ変換
+		Vector3 screen0 = Vector3::Transform(
+			Vector3::Transform(point0, viewProjectionMatrix),
+			viewportMatrix
+		);
+		Vector3 screen1 = Vector3::Transform(
+			Vector3::Transform(point1, viewProjectionMatrix),
+			viewportMatrix
+		);
+
+		// 変換した2点を線で結び、曲線の一部分として描画
+		Novice::DrawLine(
+			static_cast<int>(screen0.x),
+			static_cast<int>(screen0.y),
+			static_cast<int>(screen1.x),
+			static_cast<int>(screen1.y),
+			color
+		);
+	}
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -133,7 +185,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	},
 		.size{0.83f, 0.26f, 0.24f}
 	};
-	unsigned int obb1Color = 0xFFFFFFFF;
+	// unsigned int obb1Color = 0xFFFFFFFF;
 
 	OBB obb2{
 		.center{0.9f, 0.66f, 0.78f},
@@ -144,7 +196,14 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	},
 		.size{0.5f, 0.37f, 0.5f}
 	};
-	unsigned int obb2Color = 0xFFFFFFFF;
+	// unsigned int obb2Color = 0xFFFFFFFF;
+
+	// 2次ベジェ曲線の制御点
+	Vector3 controlPoints[3] = {
+		{-0.8f, 0.58f, 1.0f},
+		{1.76f, 1.0f, -0.3f},
+		{0.94f, -0.7f, 2.3f},
+	};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -221,6 +280,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::TreePop();
 		}
 
+		/*
 		// 区切り線
 		ImGui::Separator();
 
@@ -248,65 +308,23 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat3("Diff", &segment.diff.x, 0.01f);
 			ImGui::TreePop();
 		}
+		*/
+		// 区切り線
+		ImGui::Separator();
+		
+		// 2次ベジェ曲線
+		if (ImGui::TreeNode("Bezier Control Points")) {
+			ImGui::DragFloat3("Control Point 0", &controlPoints[0].x, 0.01f);
+			ImGui::DragFloat3("Control Point 1", &controlPoints[1].x, 0.01f);
+			ImGui::DragFloat3("Control Point 2", &controlPoints[2].x, 0.01f);
+			ImGui::TreePop();
+		}
 
 		// 終わり
 		ImGui::End();
 
-		// ==========================================
-
-		// minとmaxが入れ替わらないようにする処理
-		AABB tempAABB = aabb;
-		aabb.min.x = (std::min)(tempAABB.min.x, tempAABB.max.x);
-		aabb.max.x = (std::max)(tempAABB.min.x, tempAABB.max.x);
-		aabb.min.y = (std::min)(tempAABB.min.y, tempAABB.max.y);
-		aabb.max.y = (std::max)(tempAABB.min.y, tempAABB.max.y);
-		aabb.min.z = (std::min)(tempAABB.min.z, tempAABB.max.z);
-		aabb.max.z = (std::max)(tempAABB.min.z, tempAABB.max.z);
-
-		// OBBのSizeは中心から面までの距離なので、0より下には下げない
-		// 0になった軸は厚み0の平面として扱う
-		obb1.size.x = (std::max)(obb1.size.x, 0.0f);
-		obb1.size.y = (std::max)(obb1.size.y, 0.0f);
-		obb1.size.z = (std::max)(obb1.size.z, 0.0f);
-
-		obb2.size.x = (std::max)(obb2.size.x, 0.0f);
-		obb2.size.y = (std::max)(obb2.size.y, 0.0f);
-		obb2.size.z = (std::max)(obb2.size.z, 0.0f);
-
-		// ==========================================
-
-		/// rotate変数をOBBが対象としているオブジェクトの回転とし、これを基に回転行列を作る
-		// OBBの回転行列の更新
-		Matrix4x4 rotateMatrix1 = Matrix4x4::Multiply(
-			Matrix4x4::MakeRotateXMatrix(rotate1.x),
-			Matrix4x4::Multiply(Matrix4x4::MakeRotateYMatrix(rotate1.y), Matrix4x4::MakeRotateZMatrix(rotate1.z))
-		);
-
-		Matrix4x4 rotateMatrix2 = Matrix4x4::Multiply(
-			Matrix4x4::MakeRotateXMatrix(rotate2.x),
-			Matrix4x4::Multiply(Matrix4x4::MakeRotateYMatrix(rotate2.y), Matrix4x4::MakeRotateZMatrix(rotate2.z))
-		);
-
-		// 回転行列から軸（Orientation）を抽出してOBBにセット
-		for (int i = 0; i < 3; ++i) {
-			obb1.orientations[i].x = rotateMatrix1.m[i][0];
-			obb1.orientations[i].y = rotateMatrix1.m[i][1];
-			obb1.orientations[i].z = rotateMatrix1.m[i][2];
-		}
-
-		for (int i = 0; i < 3; ++i) {
-			obb2.orientations[i].x = rotateMatrix2.m[i][0];
-			obb2.orientations[i].y = rotateMatrix2.m[i][1];
-			obb2.orientations[i].z = rotateMatrix2.m[i][2];
-		}
-
 		// --- 当たり判定 ---
-		// 衝突判定
-		if (Collision3D::IsCollisionObbAndObb(obb1, obb2)) {
-			obb1Color = 0xFF0000FF;
-		} else {
-			obb1Color = 0xFFFFFFFF;
-		}
+
 
 		/// ---行列の計算---
 		Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix({1, 1, 1}, cameraRotate, cameraTranslate);
@@ -344,8 +362,51 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// Collision3D::DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
 
 		// OBB
-		Collision3D::DrawOBB(obb1, viewProjectionMatrix, viewportMatrix, obb1Color);
-		Collision3D::DrawOBB(obb2, viewProjectionMatrix, viewportMatrix, obb2Color);
+		// Collision3D::DrawOBB(obb1, viewProjectionMatrix, viewportMatrix, obb1Color);
+		// Collision3D::DrawOBB(obb2, viewProjectionMatrix, viewportMatrix, obb2Color);
+
+		// 2次ベジェ曲線
+		DrawBezier(
+			controlPoints[0],
+			controlPoints[1],
+			controlPoints[2],
+			viewProjectionMatrix,
+			viewportMatrix,
+			0xFF00FFFF
+		);
+
+		// 制御点を半径0.01mの黒い球で描画
+		for (int i = 0; i < 3; ++i) {
+			Sphere controlPointSphere{
+				controlPoints[i],
+				0.01f,
+				0x000000FF
+			};
+
+			//Collision3D::DrawSphere(
+			//	controlPointSphere,
+			//	viewProjectionMatrix,
+			//	viewportMatrix,
+			//	controlPointSphere.color
+			//);
+
+			// 制御点をスクリーン座標へ変換
+			Vector3 screenPoint = Vector3::Transform(
+				Vector3::Transform(controlPoints[i], viewProjectionMatrix),
+				viewportMatrix
+			);
+
+			// 制御点を小さな黒い円で描画
+			Novice::DrawEllipse(
+				static_cast<int>(screenPoint.x),
+				static_cast<int>(screenPoint.y),
+				5,
+				5,
+				0.0f,
+				0x000000FF,
+				kFillModeSolid
+			);
+		}
 
 		///
 		/// ↑描画処理ここまで

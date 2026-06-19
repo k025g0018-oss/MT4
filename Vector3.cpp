@@ -101,3 +101,17 @@ Vector3 Vector3::Transform(const Vector3& vector, const Matrix4x4& matrix) {
 
 	return result;
 }
+
+// 線形補間
+Vector3 Vector3::Lerp(const Vector3& v1, const Vector3& v2, float t) {
+	Vector3 result;
+
+	// t=0でv1、t=1でv2となる位置を各成分ごとに求める
+	result = {
+		.x = (1.0f - t) * v1.x + t * v2.x,
+		.y = (1.0f - t) * v1.y + t * v2.y,
+		.z = (1.0f - t) * v1.z + t * v2.z,
+	};
+
+	return result;
+}

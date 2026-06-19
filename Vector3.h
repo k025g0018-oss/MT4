@@ -27,6 +27,8 @@ struct Vector3 {
 	static void ScreenPrintf(int x, int y, const Vector3& vector, const char* label);
 	// 座標変換
 	static Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix);
+	// 線形補間
+	static Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t);
 };
 
 struct Transform {
