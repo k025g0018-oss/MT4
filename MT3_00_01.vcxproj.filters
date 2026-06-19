@@ -38,6 +38,12 @@
     <Filter Include="KamataEngine\Source\Math\Collision\Collision3D">
       <UniqueIdentifier>{d80664e4-19be-48e4-ae65-6344c7edd0f6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="KamataEngine\Source\Draw3D">
+      <UniqueIdentifier>{1fe5df48-0f9a-4592-9ce6-ce8dc5a8ae9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="KamataEngine\Source\Geometry3D">
+      <UniqueIdentifier>{d9381caa-d49a-4553-ba86-80fb005a99b9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -58,6 +64,9 @@
     </ClCompile>
     <ClCompile Include="Collision3D.cpp">
       <Filter>KamataEngine\Source\Math\Collision\Collision3D</Filter>
+    </ClCompile>
+    <ClCompile Include="Draw3D.cpp">
+      <Filter>KamataEngine\Source\Draw3D</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -156,6 +165,12 @@
     </ClInclude>
     <ClInclude Include="Collision3D.h">
       <Filter>KamataEngine\Source\Math\Collision\Collision3D</Filter>
+    </ClInclude>
+    <ClInclude Include="Draw3D.h">
+      <Filter>KamataEngine\Source\Draw3D</Filter>
+    </ClInclude>
+    <ClInclude Include="Geometry3D.h">
+      <Filter>KamataEngine\Source\Geometry3D</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

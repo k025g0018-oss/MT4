@@ -194,22 +194,10 @@ bool Collision3D::IsCollisionAabbAndSegment(const AABB& aabb, const Segment& seg
 	return true;
 }
 
-// --- OBBをWorld座標系へ変換する行列を作成する関数 ---
-Matrix4x4 Collision3D::MakeOBBWorldMatrix(const OBB& obb) {
-	Matrix4x4 matrix;
-	// 3x3の回転行列成分をセット
-	matrix.m[0][0] = obb.orientations[0].x; matrix.m[0][1] = obb.orientations[0].y; matrix.m[0][2] = obb.orientations[0].z; matrix.m[0][3] = 0.0f;
-	matrix.m[1][0] = obb.orientations[1].x; matrix.m[1][1] = obb.orientations[1].y; matrix.m[1][2] = obb.orientations[1].z; matrix.m[1][3] = 0.0f;
-	matrix.m[2][0] = obb.orientations[2].x; matrix.m[2][1] = obb.orientations[2].y; matrix.m[2][2] = obb.orientations[2].z; matrix.m[2][3] = 0.0f;
-	// 平行移動成分をセット
-	matrix.m[3][0] = obb.center.x; matrix.m[3][1] = obb.center.y; matrix.m[3][2] = obb.center.z; matrix.m[3][3] = 1.0f;
-	return matrix;
-}
-
 /// --- OBBと球の衝突判定 ---
 bool Collision3D::IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere) {
 	// 1_OBBのWorldMatrixとその逆行列を計算
-	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
+	Matrix4x4 obbWorldMatrix = Matrix4x4::MakeOBBWorldMatrix(obb);
 	Matrix4x4 obbWorldMatrixInverse = Matrix4x4::Inverse(obbWorldMatrix);
 
 	// 2_球の中心をOBBのローカル空間へ変換
@@ -233,7 +221,7 @@ bool Collision3D::IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere) 
 /// --- OBBと線の衝突判定 ---
 bool Collision3D::IsCollisionObbAndSegment(const OBB& obb, const Segment& segment) {
 	// 1_OBBの向きと位置から、OBBのワールド行列を作る
-	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
+	Matrix4x4 obbWorldMatrix = Matrix4x4::MakeOBBWorldMatrix(obb);
 
 	// 2_逆行列を作り、ワールド空間からOBBローカル空間へ戻せるようにする
 	Matrix4x4 obbInverse = Matrix4x4::Inverse(obbWorldMatrix);
@@ -270,7 +258,7 @@ void Collision3D::GetObbVertices(const OBB& obb, Vector3 vertices[8]) {
 	};
 
 	// 2_OBBの姿勢と位置からWorld行列を作る
-	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
+	Matrix4x4 obbWorldMatrix = Matrix4x4::MakeOBBWorldMatrix(obb);
 
 	// 3_8頂点をワールド座標へ変換する
 	for (int i = 0; i < 8; ++i) {
@@ -346,173 +334,4 @@ bool Collision3D::IsCollisionObbAndObb(const OBB& obb1, const OBB& obb2) {
 
 	// 5_どの軸でも分離していなければ衝突している
 	return true;
-}
-
-// Sphereを表示する
-void Collision3D::DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color) {
-	const uint32_t kSubdivision = 16; // 分割数
-	const float kLonEvery = (float)M_PI * 2.0f / kSubdivision; // 経度分割1つ分の角度
-	const float kLatEvery = (float)M_PI / kSubdivision;; // 緯度分割1つ分の角度
-
-	// 緯度の方向に分割 -π/2 ~ π/2
-	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
-		float lat = -(float)M_PI / 2.0f + kLatEvery * latIndex; // 現在の緯度
-
-		// 経度の方向に分割 0 ~ 2π
-		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-			float lon = lonIndex * kLonEvery; // 現在の緯度
-
-			/// world座標系でのa,b,cを求める
-			// a
-			Vector3 a;
-			a.x = sphere.radius * cosf(lat) * cosf(lon);
-			a.y = sphere.radius * sinf(lat);
-			a.z = sphere.radius * cosf(lat) * sinf(lon);
-			a = a + sphere.center;
-
-			// b
-			Vector3 b;
-			b.x = sphere.radius * cosf(lat) * cosf(lon + kLonEvery);
-			b.y = sphere.radius * sinf(lat);
-			b.z = sphere.radius * cosf(lat) * sinf(lon + kLonEvery);
-			b = b + sphere.center;
-
-			// c
-			Vector3 c;
-			c.x = sphere.radius * cosf(lat + kLatEvery) * cosf(lon);
-			c.y = sphere.radius * sinf(lat + kLatEvery);
-			c.z = sphere.radius * cosf(lat + kLatEvery) * sinf(lon);
-			c = c + sphere.center;
-
-			// a,b,cをScreen座標系まで変換
-			Vector3 sa = Vector3::Transform(Vector3::Transform(a, viewProjectionMatrix), viewportMatrix);
-			Vector3 sb = Vector3::Transform(Vector3::Transform(b, viewProjectionMatrix), viewportMatrix);
-			Vector3 sc = Vector3::Transform(Vector3::Transform(c, viewProjectionMatrix), viewportMatrix);
-
-			// ab,bcで線を引く
-			Novice::DrawLine((int)sa.x, (int)sa.y, (int)sb.x, (int)sb.y, color);
-			Novice::DrawLine((int)sa.x, (int)sa.y, (int)sc.x, (int)sc.y, color);
-		}
-	}
-}
-
-// 平面の描画
-Vector3 Collision3D::Perpendicular(const Vector3& vector) {
-	if (vector.x != 0.0f || vector.y != 0.0f) {
-		return {-vector.y, vector.x, 0.0f};
-	}
-
-	return {0.0f, -vector.z, vector.y};
-}
-
-void Collision3D::DrawPlane(const Plane& plane, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color) {
-	Vector3 center = plane.normal * plane.distance; // 1
-	Vector3 perpendiculars[4];
-	perpendiculars[0] = Vector3::Normalize(Perpendicular(plane.normal)); // 2
-	perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y, -perpendiculars[0].z}; // 3
-	perpendiculars[2] = Vector3::Cross(plane.normal, perpendiculars[0]); // 4
-	perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y, -perpendiculars[2].z}; // 5
-	// 6
-	Vector3 points[4];
-	for (int32_t index = 0; index < 4; ++index) {
-		Vector3 extend = perpendiculars[index] * 2.0f;
-		Vector3 point = center + extend;
-		points[index] = Vector3::Transform(Vector3::Transform(point, viewProjectionMatrix), viewportMatrix);
-	}
-
-	// pointsをそれぞれ結んでDrawLineで矩形を描画する
-	Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[2].x, (int)points[2].y, color);
-	Novice::DrawLine((int)points[2].x, (int)points[2].y, (int)points[1].x, (int)points[1].y, color);
-	Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[3].x, (int)points[3].y, color);
-	Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[0].x, (int)points[0].y, color);
-}
-
-// 三角形の描画
-void Collision3D::DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color) {
-	Vector3 screenVertices[3];
-	for (int i = 0; i < 3; ++i) {
-		screenVertices[i] = Vector3::Transform(Vector3::Transform(triangle.vertices[i], viewProjectionMatrix), viewportMatrix);
-	}
-
-	// 3つの頂点を線で結ぶ
-	Novice::DrawLine((int)screenVertices[0].x, (int)screenVertices[0].y, (int)screenVertices[1].x, (int)screenVertices[1].y, color);
-	Novice::DrawLine((int)screenVertices[1].x, (int)screenVertices[1].y, (int)screenVertices[2].x, (int)screenVertices[2].y, color);
-	Novice::DrawLine((int)screenVertices[2].x, (int)screenVertices[2].y, (int)screenVertices[0].x, (int)screenVertices[0].y, color);
-}
-
-// ---AABBの描画関数---
-void Collision3D::DrawAABB(const AABB& aabb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color) {
-	// AABBの8つの頂点を定義
-	Vector3 vertices[8] = {
-		{aabb.min.x, aabb.min.y, aabb.min.z}, // 0: 左下前
-		{aabb.max.x, aabb.min.y, aabb.min.z}, // 1: 右下前
-		{aabb.max.x, aabb.min.y, aabb.max.z}, // 2: 右下奥
-		{aabb.min.x, aabb.min.y, aabb.max.z}, // 3: 左下奥
-		{aabb.min.x, aabb.max.y, aabb.min.z}, // 4: 左上前
-		{aabb.max.x, aabb.max.y, aabb.min.z}, // 5: 右上前
-		{aabb.max.x, aabb.max.y, aabb.max.z}, // 6: 右上奥
-		{aabb.min.x, aabb.max.y, aabb.max.z}  // 7: 左上奥
-	};
-
-	// 描画用のスクリーン座標に変換
-	Vector3 screenVertices[8];
-	for (int i = 0; i < 8; ++i) {
-		Vector3 ndc = Vector3::Transform(vertices[i], viewProjectionMatrix);
-		screenVertices[i] = Vector3::Transform(ndc, viewportMatrix);
-	}
-
-	// ラインを結ぶインデックス（12本の辺）
-	int indices[12][2] = {
-		{0, 1}, {1, 2}, {2, 3}, {3, 0}, // 底面
-		{4, 5}, {5, 6}, {6, 7}, {7, 4}, // 上面
-		{0, 4}, {1, 5}, {2, 6}, {3, 7}  // 側面（柱）
-	};
-
-	// 12本の線を描画
-	for (int i = 0; i < 12; ++i) {
-		Novice::DrawLine(
-			int(screenVertices[indices[i][0]].x), int(screenVertices[indices[i][0]].y),
-			int(screenVertices[indices[i][1]].x), int(screenVertices[indices[i][1]].y),
-			color
-		);
-	}
-}
-
-/// --- OBB描画 ---
-void Collision3D::DrawOBB(const OBB& obb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color) {
-	// ローカル空間での8頂点（中心が原点なので -size ～ +size）
-	Vector3 vertices[8] = {
-		{-obb.size.x, -obb.size.y, -obb.size.z}, {obb.size.x, -obb.size.y, -obb.size.z},
-		{obb.size.x, -obb.size.y, obb.size.z}, {-obb.size.x, -obb.size.y, obb.size.z},
-		{-obb.size.x, obb.size.y, -obb.size.z}, {obb.size.x, obb.size.y, -obb.size.z},
-		{obb.size.x, obb.size.y, obb.size.z}, {-obb.size.x, obb.size.y, obb.size.z}
-	};
-
-	// WorldMatrixを取得
-	Matrix4x4 obbWorldMatrix = MakeOBBWorldMatrix(obb);
-
-	// 各頂点をワールド座標へ変換し、さらにスクリーン座標へ変換
-	Vector3 screenVertices[8];
-	for (int i = 0; i < 8; ++i) {
-		// World変換
-		Vector3 worldPos = Vector3::Transform(vertices[i], obbWorldMatrix);
-		// ViewProjection & Viewport変換
-		Vector3 ndc = Vector3::Transform(worldPos, viewProjectionMatrix);
-		screenVertices[i] = Vector3::Transform(ndc, viewportMatrix);
-	}
-
-	// 12本の辺を描画
-	int indices[12][2] = {
-		{0, 1}, {1, 2}, {2, 3}, {3, 0}, // 底面
-		{4, 5}, {5, 6}, {6, 7}, {7, 4}, // 上面
-		{0, 4}, {1, 5}, {2, 6}, {3, 7}  // 側面
-	};
-
-	for (int i = 0; i < 12; ++i) {
-		Novice::DrawLine(
-			(int)screenVertices[indices[i][0]].x, (int)screenVertices[indices[i][0]].y,
-			(int)screenVertices[indices[i][1]].x, (int)screenVertices[indices[i][1]].y,
-			color
-		);
-	}
 }

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Vector3.h"
+#include "Geometry3D.h"
 
 struct Matrix4x4 {
 	float m[4][4];
@@ -47,4 +48,7 @@ struct Matrix4x4 {
 
 	// 4x4行列の数値表示
 	static void ScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label);
+
+	// OBBをWorld座標系へ変換する行列を作成する関数
+	static Matrix4x4 MakeOBBWorldMatrix(const OBB& obb);
 };

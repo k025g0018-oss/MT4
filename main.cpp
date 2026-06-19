@@ -12,104 +12,14 @@
 #include "Vector4.h"
 #include "Matrix4x4.h"
 #include "Collision3D.h"
+#include "Geometry3D.h"
+#include "Draw3D.h"
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
 // 4x4行列の数値表示
 static const int kRowHeight = 30;
 static const int kColumnWidth = 60;
-
-// Gridを表示
-void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix) {
-	const float kGridHalfWidth = 2.0f; // Gridの半分の幅
-	const uint32_t kSubdivision = 10; // 分割数
-	const float kGridEvery = (kGridHalfWidth * 2.0f) / float(kSubdivision); // 1つ文の長さ
-
-	// 奥から手前への線を順々にひいていく
-	for (uint32_t xIndex = 0; xIndex <= kSubdivision; ++xIndex) {
-		// 上の情報を使ってワールド座標系上の始点と終点を求める
-		// スクリーン座標系まで変換を掛ける
-		// 変換した座標を使って表示
-		float x = -kGridHalfWidth + (xIndex * kGridEvery);
-		unsigned int color = (x == 0.0f) ? 0x000000FF : 0xAAAAAAFF; // 中心線は黒、他は白
-
-		// 始点と終点（Z方向の線）
-		Vector3 start = {x, 0, -kGridHalfWidth};
-		Vector3 end = {x, 0, kGridHalfWidth};
-
-		Vector3 screenStart = Vector3::Transform(Vector3::Transform({x, 0, -kGridHalfWidth}, viewProjectionMatrix), viewportMatrix);
-		Vector3 screenEnd = Vector3::Transform(Vector3::Transform({x, 0, kGridHalfWidth}, viewProjectionMatrix), viewportMatrix);
-
-		Novice::DrawLine((int)screenStart.x, (int)screenStart.y, (int)screenEnd.x, (int)screenEnd.y, color);
-	}
-
-	// 左から右も同じように
-	for (uint32_t zIndex = 0; zIndex <= kSubdivision; ++zIndex) {
-		float z = -kGridHalfWidth + (zIndex * kGridEvery);
-		unsigned int color = (z == 0.0f) ? 0x000000FF : 0xAAAAAAFF;
-
-		// 始点と終点（X方向の線）
-		Vector3 start = {-kGridHalfWidth, 0, z};
-		Vector3 end = {kGridHalfWidth, 0, z};
-
-		Vector3 screenStart = Vector3::Transform(Vector3::Transform({-kGridHalfWidth, 0, z}, viewProjectionMatrix), viewportMatrix);
-		Vector3 screenEnd = Vector3::Transform(Vector3::Transform({kGridHalfWidth, 0, z}, viewProjectionMatrix), viewportMatrix);
-
-		Novice::DrawLine((int)screenStart.x, (int)screenStart.y, (int)screenEnd.x, (int)screenEnd.y, color);
-	}
-}
-
-// 3次元空間に2次ベジェ曲線を描画
-void DrawBezier(
-	const Vector3& controlPoint0,
-	const Vector3& controlPoint1,
-	const Vector3& controlPoint2,
-	const Matrix4x4& viewProjectionMatrix,
-	const Matrix4x4& viewportMatrix,
-	uint32_t color
-) {
-	// 曲線を32本の短い線分に分けて描画する
-	const uint32_t kSubdivision = 32;
-
-	for (uint32_t i = 0; i < kSubdivision; ++i) {
-		// 現在の線分の始点と終点に対応する割合を求める
-		float t0 = static_cast<float>(i) / kSubdivision;
-		float t1 = static_cast<float>(i + 1) / kSubdivision;
-
-		// 制御点0と1、制御点1と2の間をt0で線形補間
-		Vector3 p01 = Vector3::Lerp(controlPoint0, controlPoint1, t0);
-		Vector3 p12 = Vector3::Lerp(controlPoint1, controlPoint2, t0);
-
-		// 2つの補間点をさらに補間して、曲線上の始点を求める
-		Vector3 point0 = Vector3::Lerp(p01, p12, t0);
-
-		// 制御点0と1、制御点1と2の間をt1で線形補間
-		p01 = Vector3::Lerp(controlPoint0, controlPoint1, t1);
-		p12 = Vector3::Lerp(controlPoint1, controlPoint2, t1);
-
-		// 2つの補間点をさらに補間して、曲線上の終点を求める
-		Vector3 point1 = Vector3::Lerp(p01, p12, t1);
-
-		// 曲線上の2点をワールド座標からスクリーン座標へ変換
-		Vector3 screen0 = Vector3::Transform(
-			Vector3::Transform(point0, viewProjectionMatrix),
-			viewportMatrix
-		);
-		Vector3 screen1 = Vector3::Transform(
-			Vector3::Transform(point1, viewProjectionMatrix),
-			viewportMatrix
-		);
-
-		// 変換した2点を線で結び、曲線の一部分として描画
-		Novice::DrawLine(
-			static_cast<int>(screen0.x),
-			static_cast<int>(screen0.y),
-			static_cast<int>(screen1.x),
-			static_cast<int>(screen1.y),
-			color
-		);
-	}
-}
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
@@ -131,7 +41,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char preKeys[256] = {0};
 
 	/// ---定義エリア---
-
 	// 線
 	Segment segment{
 		.origin{-0.8f, -0.3f, 0.0f},
@@ -203,6 +112,28 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		{-0.8f, 0.58f, 1.0f},
 		{1.76f, 1.0f, -0.3f},
 		{0.94f, -0.7f, 2.3f},
+	};
+
+	/// --- 階層構造を構築する ---
+	// [0]:肩
+	// [1]:肘
+	// [2]:手
+	Vector3 translates[3] = {
+		{0.2f, 1.0f, 0.0f},
+		{0.4f, 0.0f, 0.0f},
+		{0.3f, 0.0f, 0.0f},
+	};
+
+	Vector3 rotates[3] = {
+		{0.0f, 0.0f, -6.8f},
+		{0.0f, 0.0f, -1.4f},
+		{0.0f, 0.0f, 0.0f},
+	};
+
+	Vector3 scales[3] = {
+		{1.0f, 1.0f, 1.0f},
+		{1.0f, 1.0f, 1.0f},
+		{1.0f, 1.0f, 1.0f},
 	};
 
 	// ウィンドウの×ボタンが押されるまでループ
@@ -311,7 +242,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		*/
 		// 区切り線
 		ImGui::Separator();
-		
+
 		// 2次ベジェ曲線
 		if (ImGui::TreeNode("Bezier Control Points")) {
 			ImGui::DragFloat3("Control Point 0", &controlPoints[0].x, 0.01f);
@@ -342,7 +273,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 
 		// グリッド線
-		DrawGrid(viewProjectionMatrix, viewportMatrix);
+		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 
 		// 線
 		// Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
@@ -350,23 +281,23 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		// 球
-		// Collision3D::DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
+		// Draw3D::DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
 
 		// 平面
-		// Collision3D::DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
+		// Draw3D::DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
 		// 三角形
-		//Collision3D::DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
+		//Draw3D::DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
 		// AABB
-		// Collision3D::DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
+		// Draw3D::DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
 
 		// OBB
-		// Collision3D::DrawOBB(obb1, viewProjectionMatrix, viewportMatrix, obb1Color);
-		// Collision3D::DrawOBB(obb2, viewProjectionMatrix, viewportMatrix, obb2Color);
+		// Draw3D::DrawOBB(obb1, viewProjectionMatrix, viewportMatrix, obb1Color);
+		// Draw3D::DrawOBB(obb2, viewProjectionMatrix, viewportMatrix, obb2Color);
 
 		// 2次ベジェ曲線
-		DrawBezier(
+		Draw3D::DrawBezier(
 			controlPoints[0],
 			controlPoints[1],
 			controlPoints[2],

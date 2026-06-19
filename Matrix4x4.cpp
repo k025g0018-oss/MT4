@@ -430,3 +430,15 @@ void Matrix4x4::ScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* 
 		}
 	}
 }
+
+// --- OBBをWorld座標系へ変換する行列を作成する関数 ---
+Matrix4x4 Matrix4x4::MakeOBBWorldMatrix(const OBB& obb) {
+	Matrix4x4 matrix;
+	// 3x3の回転行列成分をセット
+	matrix.m[0][0] = obb.orientations[0].x; matrix.m[0][1] = obb.orientations[0].y; matrix.m[0][2] = obb.orientations[0].z; matrix.m[0][3] = 0.0f;
+	matrix.m[1][0] = obb.orientations[1].x; matrix.m[1][1] = obb.orientations[1].y; matrix.m[1][2] = obb.orientations[1].z; matrix.m[1][3] = 0.0f;
+	matrix.m[2][0] = obb.orientations[2].x; matrix.m[2][1] = obb.orientations[2].y; matrix.m[2][2] = obb.orientations[2].z; matrix.m[2][3] = 0.0f;
+	// 平行移動成分をセット
+	matrix.m[3][0] = obb.center.x; matrix.m[3][1] = obb.center.y; matrix.m[3][2] = obb.center.z; matrix.m[3][3] = 1.0f;
+	return matrix;
+}

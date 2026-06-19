@@ -1,0 +1,55 @@
+﻿#pragma once
+
+#include "Vector3.h"
+
+// 線
+struct Line { // 直線
+	Vector3 origin; // 始点
+	Vector3 diff; // 終点への差分ベクトル
+};
+
+struct Ray { // 半直線
+	Vector3 origin; // 始点
+	Vector3 diff; // 終点への差分ベクトル
+};
+
+struct Segment { // 線分
+	Vector3 origin; // 始点
+	Vector3 diff; // 終点への差分ベクトル
+};
+
+// 球
+struct Sphere {
+	Vector3 center; // 中心点
+	float radius; // 半径
+	unsigned int color;
+};
+
+// 平面
+struct Plane {
+	Vector3 normal; // 法線
+	float distance; // 距離
+};
+
+// 三角形
+struct Triangle {
+	Vector3 vertices[3]; // 頂点
+};
+
+// ==========================================
+
+/// --- AABB構造体 ---
+struct AABB {
+	Vector3 min; // 最小点
+	Vector3 max; // 最大点
+};
+
+/// --- OBB構造体 ---
+// AABB + 回転 = OBB
+struct OBB {
+	Vector3 center; // 中心点
+	Vector3 orientations[3]; // 座標軸 正規化・直交必須 3x3回転行列の各行
+	Vector3 size; // 座標軸方向の長さの半分 中心から面までの距離S
+};
+
+// ==========================================
