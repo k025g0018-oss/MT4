@@ -43,6 +43,31 @@ void Draw3D::DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& vi
 	}
 }
 
+// 3次元空間の線分を描画
+void Draw3D::DrawSegment(
+	const Segment& segment,
+	const Matrix4x4& viewProjectionMatrix,
+	const Matrix4x4& viewportMatrix,
+	uint32_t color
+) {
+	// 始点と終点をスクリーン座標へ変換
+	Vector3 start = Vector3::Transform(
+		Vector3::Transform(segment.origin, viewProjectionMatrix),
+		viewportMatrix
+	);
+	Vector3 end = Vector3::Transform(
+		Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix),
+		viewportMatrix
+	);
+
+	// スクリーン座標上の2点を線で結ぶ
+	Novice::DrawLine(
+		static_cast<int>(start.x), static_cast<int>(start.y),
+		static_cast<int>(end.x), static_cast<int>(end.y),
+		color
+	);
+}
+
 // Sphereを表示する
 void Draw3D::DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, unsigned int color) {
 	const uint32_t kSubdivision = 16; // 分割数

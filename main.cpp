@@ -115,9 +115,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	};
 
 	/// --- 階層構造を構築する ---
-	// [0]:肩
-	// [1]:肘
-	// [2]:手
+	// [0]:肩 Ws = Ls
+	// [1]:肘 We = Le * Ws
+	// [2]:手 Wh = Lh * We
 	Vector3 translates[3] = {
 		{0.2f, 1.0f, 0.0f},
 		{0.4f, 0.0f, 0.0f},
@@ -239,22 +239,78 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat3("Diff", &segment.diff.x, 0.01f);
 			ImGui::TreePop();
 		}
+
+		// 2次ベジェ曲線
+		if (ImGui::TreeNode("Bezier Control Points")) {
+		ImGui::DragFloat3("Control Point 0", &controlPoints[0].x, 0.01f);
+		ImGui::DragFloat3("Control Point 1", &controlPoints[1].x, 0.01f);
+		ImGui::DragFloat3("Control Point 2", &controlPoints[2].x, 0.01f);
+		ImGui::TreePop();
+		}
 		*/
 		// 区切り線
 		ImGui::Separator();
 
-		// 2次ベジェ曲線
-		if (ImGui::TreeNode("Bezier Control Points")) {
-			ImGui::DragFloat3("Control Point 0", &controlPoints[0].x, 0.01f);
-			ImGui::DragFloat3("Control Point 1", &controlPoints[1].x, 0.01f);
-			ImGui::DragFloat3("Control Point 2", &controlPoints[2].x, 0.01f);
+		// 腕の各関節のローカル変換を操作
+		if (ImGui::TreeNode("Arm Hierarchy")) {
+			const char* jointNames[3] = {"Shoulder", "Elbow", "Hand"};
+
+			for (int i = 0; i < 3; ++i) {
+				// 関節ごとに同じ項目名を使えるようIDを分ける
+				ImGui::PushID(i);
+
+				if (ImGui::TreeNode(jointNames[i])) {
+					ImGui::DragFloat3("Translate", &translates[i].x, 0.01f);
+					ImGui::DragFloat3("Rotate", &rotates[i].x, 0.01f);
+					ImGui::DragFloat3("Scale", &scales[i].x, 0.01f);
+					ImGui::TreePop();
+				}
+
+				ImGui::PopID();
+			}
+
 			ImGui::TreePop();
 		}
 
 		// 終わり
 		ImGui::End();
 
-		// --- 当たり判定 ---
+		/// --- 処理 ---
+		// ==========
+		// 各関節のSRTから、親座標系を基準としたローカル行列を作る
+		Matrix4x4 localMatrices[3];
+		for (int i = 0; i < 3; ++i) {
+			localMatrices[i] = Matrix4x4::MakeAffineMatrix(
+				scales[i], rotates[i], translates[i]
+			);
+		}
+
+		// 肩には親がいないため、ローカル行列がそのままワールド行列になる
+		Matrix4x4 worldMatrices[3];
+		worldMatrices[0] = localMatrices[0];
+
+		// 肘のローカル行列に肩のワールド行列を掛ける
+		worldMatrices[1] = Matrix4x4::Multiply(
+			localMatrices[1], worldMatrices[0]
+		);
+
+		// 手のローカル行列に肘のワールド行列を掛ける
+		worldMatrices[2] = Matrix4x4::Multiply(
+			localMatrices[2], worldMatrices[1]
+		);
+
+		// ワールド行列の4行目から各関節のワールド座標を取り出す
+		Vector3 jointPositions[3];
+		for (int i = 0; i < 3; ++i) {
+			jointPositions[i] = {
+				worldMatrices[i].m[3][0],
+				worldMatrices[i].m[3][1],
+				worldMatrices[i].m[3][2],
+			};
+		}
+		// ==========
+
+		/// --- 当たり判定 ---
 
 
 		/// ---行列の計算---
@@ -272,70 +328,108 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		// グリッド線
+		/// --- グリッド線 ---
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-		// 線
+		/// --- 線 ---
 		// Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
 		// Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
 		// Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
-		// 球
+		/// --- 球 ---
 		// Draw3D::DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
 
-		// 平面
+		/// --- 平面 ---
 		// Draw3D::DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
-		// 三角形
+		/// --- 三角形 ---
 		//Draw3D::DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
 
-		// AABB
+		/// --- AABB ---
 		// Draw3D::DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
 
-		// OBB
+		/// --- OBB ---
 		// Draw3D::DrawOBB(obb1, viewProjectionMatrix, viewportMatrix, obb1Color);
 		// Draw3D::DrawOBB(obb2, viewProjectionMatrix, viewportMatrix, obb2Color);
 
-		// 2次ベジェ曲線
-		Draw3D::DrawBezier(
-			controlPoints[0],
-			controlPoints[1],
-			controlPoints[2],
-			viewProjectionMatrix,
-			viewportMatrix,
-			0xFF00FFFF
-		);
+		/// --- 2次ベジェ曲線 ---
+		//Draw3D::DrawBezier(
+		//	controlPoints[0],
+		//	controlPoints[1],
+		//	controlPoints[2],
+		//	viewProjectionMatrix,
+		//	viewportMatrix,
+		//	0xFF00FFFF
+		//);
 
-		// 制御点を半径0.01mの黒い球で描画
+		/// --- 制御点を半径0.01mの黒い球で描画 --- 
+		//for (int i = 0; i < 3; ++i) {
+		//	Sphere controlPointSphere{
+		//		controlPoints[i],
+		//		0.01f,
+		//		0x000000FF
+		//	};
+
+		//	//Collision3D::DrawSphere(
+		//	//	controlPointSphere,
+		//	//	viewProjectionMatrix,
+		//	//	viewportMatrix,
+		//	//	controlPointSphere.color
+		//	//);
+
+		//	// 制御点をスクリーン座標へ変換
+		//	Vector3 screenPoint = Vector3::Transform(
+		//		Vector3::Transform(controlPoints[i], viewProjectionMatrix),
+		//		viewportMatrix
+		//	);
+
+		//	// 制御点を小さな黒い円で描画
+		//	Novice::DrawEllipse(
+		//		static_cast<int>(screenPoint.x),
+		//		static_cast<int>(screenPoint.y),
+		//		5,
+		//		5,
+		//		0.0f,
+		//		0x000000FF,
+		//		kFillModeSolid
+		//	);
+		//}
+
+		/// --- 階層構造 ---
+		Segment armSegments[2] = {
+			{jointPositions[0], jointPositions[1] - jointPositions[0]},
+			{jointPositions[1], jointPositions[2] - jointPositions[1]},
+		};
+
+		// 肩から肘、肘から手へ白い線を描画
+		for (int i = 0; i < 2; ++i) {
+			Draw3D::DrawSegment(
+				armSegments[i],
+				viewProjectionMatrix,
+				viewportMatrix,
+				0xFFFFFFFF
+			);
+		}
+
+		// 肩は赤、肘は緑、手は青で表示
+		const uint32_t jointColors[3] = {
+			0xFF0000FF,
+			0x00FF00FF,
+			0x0000FFFF,
+		};
+
 		for (int i = 0; i < 3; ++i) {
-			Sphere controlPointSphere{
-				controlPoints[i],
-				0.01f,
-				0x000000FF
+			Sphere jointSphere{
+				jointPositions[i],
+				0.08f,
+				jointColors[i],
 			};
 
-			//Collision3D::DrawSphere(
-			//	controlPointSphere,
-			//	viewProjectionMatrix,
-			//	viewportMatrix,
-			//	controlPointSphere.color
-			//);
-
-			// 制御点をスクリーン座標へ変換
-			Vector3 screenPoint = Vector3::Transform(
-				Vector3::Transform(controlPoints[i], viewProjectionMatrix),
-				viewportMatrix
-			);
-
-			// 制御点を小さな黒い円で描画
-			Novice::DrawEllipse(
-				static_cast<int>(screenPoint.x),
-				static_cast<int>(screenPoint.y),
-				5,
-				5,
-				0.0f,
-				0x000000FF,
-				kFillModeSolid
+			Draw3D::DrawSphere(
+				jointSphere,
+				viewProjectionMatrix,
+				viewportMatrix,
+				jointSphere.color
 			);
 		}
 
