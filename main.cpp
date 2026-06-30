@@ -14,6 +14,7 @@
 #include "Collision3D.h"
 #include "Geometry3D.h"
 #include "Draw3D.h"
+#include "Spring.h"
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
@@ -200,36 +201,48 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ベクトルの符号をそのままにする
 	Vector3 plusA = +a;
 
-	/// --- 行列の演算 ---
+	// ばね
+	Spring spring{
+		// ばねの固定位置
+		.anchor = {0.0f, 0.0f, 0.0f},
 
-	// XYZ軸の回転量
-	Vector3 rotate{0.4f, 1.43f, -0.8f};
+		// ばねに力がかかっていないときの長さ
+		.naturalLength = 1.0f,
 
-	// X軸回転行列を作成する
-	Matrix4x4 rotateXMatrix =
-		Matrix4x4::MakeRotateXMatrix(rotate.x);
+		// ばねの硬さ
+		.stiffness = 100.0f,
 
-	// Y軸回転行列を作成する
-	Matrix4x4 rotateYMatrix =
-		Matrix4x4::MakeRotateYMatrix(rotate.y);
+		// 振動を弱める強さ
+		.dampingCoefficient = 2.0f,
+	};
 
-	// Z軸回転行列を作成する
-	Matrix4x4 rotateZMatrix =
-		Matrix4x4::MakeRotateZMatrix(rotate.z);
+	// ボール
+	Ball ball{
+		// 自然長より0.2だけ伸ばした位置から開始する
+		.position = {1.2f, 0.0f, 0.0f},
 
-	// 行列の加算を確認する
-	Matrix4x4 addedMatrix =
-		rotateXMatrix + rotateYMatrix;
+		// 最初は停止している
+		.velocity = {0.0f, 0.0f, 0.0f},
 
-	// 行列の減算を確認する
-	Matrix4x4 subtractedMatrix =
-		rotateXMatrix - rotateYMatrix;
+		// 最初の加速度は0
+		.acceleration = {0.0f, 0.0f, 0.0f},
 
-	// 行列積を使ってXYZの回転行列を合成する
-	Matrix4x4 rotateMatrix =
-		rotateXMatrix *
-		rotateYMatrix *
-		rotateZMatrix;
+		// ボールの質量
+		.mass = 2.0f,
+
+		// 描画するボールの大きさ
+		.radius = 0.05f,
+
+		// 青色
+		.color = 0x0000FFFF,
+	};
+
+	// リセットするときに戻す初期位置
+	const Vector3 initialBallPosition{
+		1.2f,
+		0.0f,
+		0.0f
+	};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {

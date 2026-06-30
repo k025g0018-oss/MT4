@@ -44,6 +44,12 @@
     <Filter Include="KamataEngine\Source\Geometry3D">
       <UniqueIdentifier>{d9381caa-d49a-4553-ba86-80fb005a99b9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="KamataEngine\Source\Objects">
+      <UniqueIdentifier>{86ed8989-84b9-407a-beb5-54a33bc69257}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="KamataEngine\Source\Objects\Spring">
+      <UniqueIdentifier>{79616a3e-f331-4b6c-816d-46afcffa291d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -171,6 +177,9 @@
     </ClInclude>
     <ClInclude Include="Geometry3D.h">
       <Filter>KamataEngine\Source\Geometry3D</Filter>
+    </ClInclude>
+    <ClInclude Include="Spring.h">
+      <Filter>KamataEngine\Source\Objects\Spring</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
