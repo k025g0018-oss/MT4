@@ -244,6 +244,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		0.0f
 	};
 
+	// 60FPSを前提とした1フレームの経過時間
+	const float deltaTime = 1.0f / 60.0f;
+
+	// Startボタンを押すまでは計算しない
+	bool isRunning = false;
+
+	// trueなら減衰抵抗を使用する
+	bool useDamping = true; // ここで減衰ありかなしにする
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -322,80 +331,88 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 区切り線
 		ImGui::Separator();
 
-		/// --- ImGuiによる結果表示 ---
-
-		ImGui::Begin("Operator Overload");
-
-		// ベクトルの加算結果
-		ImGui::Text(
-			"c = a + b: %f, %f, %f",
-			c.x,
-			c.y,
-			c.z
+		/// --- ばね操作 ---
+		// 減衰抵抗を使用するか切り替える
+		ImGui::Checkbox(
+			"Use Damping",
+			&useDamping
 		);
 
-		// ベクトルの減算結果
-		ImGui::Text(
-			"d = a - b: %f, %f, %f",
-			d.x,
-			d.y,
-			d.z
-		);
+		// Startを押したら初期状態から動かす
+		if (ImGui::Button("Start")) {
 
-		// ベクトルのスカラー倍
-		ImGui::Text(
-			"e = a * 2.4f: %f, %f, %f",
-			e.x,
-			e.y,
-			e.z
-		);
+			// ボールを最初の位置へ戻す
+			ball.position = initialBallPosition;
 
-		// 左右を入れ替えたスカラー倍
-		ImGui::Text(
-			"f = 2.4f * a: %f, %f, %f",
-			f.x,
-			f.y,
-			f.z
-		);
+			// 速度を0に戻す
+			ball.velocity = {
+				0.0f,
+				0.0f,
+				0.0f
+			};
 
-		// 単項マイナスの結果
-		ImGui::Text(
-			"-a: %f, %f, %f",
-			minusA.x,
-			minusA.y,
-			minusA.z
-		);
+			// 加速度を0に戻す
+			ball.acceleration = {
+				0.0f,
+				0.0f,
+				0.0f
+			};
 
-		// 単項プラスの結果
-		ImGui::Text(
-			"+a: %f, %f, %f",
-			plusA.x,
-			plusA.y,
-			plusA.z
-		);
+			// ばねの計算を開始する
+			isRunning = true;
+		}
+
+		// ボタンを横に並べる
+		ImGui::SameLine();
+
+		// Resetを押したら初期状態で停止する
+		if (ImGui::Button("Reset")) {
+
+			// ばねの計算を停止する
+			isRunning = false;
+
+			// ボールを初期状態へ戻す
+			ball.position = initialBallPosition;
+			ball.velocity = {
+				0.0f,
+				0.0f,
+				0.0f
+			};
+			ball.acceleration = {
+				0.0f,
+				0.0f,
+				0.0f
+			};
+		}
 
 		ImGui::Separator();
 
-		// 行列の加算結果
-		DisplayMatrix(
-			"rotateXMatrix + rotateYMatrix",
-			addedMatrix
+		// 現在の実行状態を表示する
+		ImGui::Text(
+			"State: %s",
+			isRunning ? "Running" : "Stopped"
 		);
 
-		ImGui::Separator();
-
-		// 行列の減算結果
-		DisplayMatrix(
-			"rotateXMatrix - rotateYMatrix",
-			subtractedMatrix
+		// 現在の減衰設定を表示する
+		ImGui::Text(
+			"Damping: %s",
+			useDamping ? "ON" : "OFF"
 		);
 
-		ImGui::Separator();
+		// ボールの現在位置を表示する
+		ImGui::Text(
+			"Position: %.3f, %.3f, %.3f",
+			ball.position.x,
+			ball.position.y,
+			ball.position.z
+		);
 
-		// XYZ回転行列の積
-		DisplayMatrix(
-			"rotateMatrix",
-			rotateMatrix
+		// ボールの現在速度を表示する
+		ImGui::Text(
+			"Velocity: %.3f, %.3f, %.3f",
+			ball.velocity.x,
+			ball.velocity.y,
+			ball.velocity.z
 		);
 
 		// 終わり
@@ -404,6 +421,79 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// --- 処理 ---
 		// ==========
 		
+		// ばね
+		// Startボタンが押されているときだけ動かす
+		if (isRunning) {
+
+			// ボールにかかる力を0で初期化する
+			Vector3 force{
+				0.0f,
+				0.0f,
+				0.0f
+			};
+
+			// アンカーからボールへ向かうベクトル
+			Vector3 diff =
+				ball.position - spring.anchor;
+
+			// 現在のばねの長さ
+			float length =
+				Vector3::Length(diff);
+
+			// 長さが0の場合は方向を求められないため除外する
+			if (length != 0.0f) {
+
+				// アンカーからボールへ向かう単位ベクトル
+				Vector3 direction =
+					Vector3::Normalize(diff);
+
+				// ばねが自然長になったときのボールの位置
+				Vector3 restPosition =
+					spring.anchor +
+					direction * spring.naturalLength;
+
+				// 自然長の位置から、どれだけずれているか
+				Vector3 displacement =
+					ball.position - restPosition;
+
+				// フックの法則 F = -kx
+				// 変位と反対方向へ復元力を発生させる
+				Vector3 restoringForce =
+					-spring.stiffness * displacement;
+
+				// まず復元力をボールに加える
+				force = restoringForce;
+			}
+
+			// 減衰ありの場合だけ減衰抵抗を加える
+			if (useDamping) {
+
+				// 減衰抵抗 F = -cv
+				// 現在の速度と反対方向に力を加える
+				Vector3 dampingForce =
+					-spring.dampingCoefficient *
+					ball.velocity;
+
+				// 復元力と減衰抵抗を合わせる
+				force = force + dampingForce;
+			}
+
+			// 運動方程式 F = ma を変形して a = F / m
+			// Vector3の割り算は未実装なので逆数を掛ける
+			ball.acceleration =
+				force * (1.0f / ball.mass);
+
+			// 加速度を1フレーム分だけ速度へ加える
+			ball.velocity =
+				ball.velocity +
+				ball.acceleration * deltaTime;
+
+			// 速度を1フレーム分だけ位置へ加える
+			ball.position =
+				ball.position +
+				ball.velocity * deltaTime;
+		}
+
 		// ==========
 
 		/// --- 当たり判定 ---
@@ -427,6 +517,44 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// --- グリッド線 ---
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 		
+		/// --- ばね ---
+		// アンカーからボールまでの線分を作る
+		Segment springSegment{
+			// 線分の始点
+			.origin = spring.anchor,
+
+			// 始点からボールまでの差分
+			.diff = ball.position - spring.anchor,
+		};
+
+		// 白い線でばねを表現する
+		Draw3D::DrawSegment(
+			springSegment,
+			viewProjectionMatrix,
+			viewportMatrix,
+			0xFFFFFFFF
+		);
+
+		/// --- ボール ---
+		// Ballの情報から描画用のSphereを作る
+		Sphere ballSphere{
+			// ボールの現在位置
+			.center = ball.position,
+
+			// ボールの半径
+			.radius = ball.radius,
+
+			// ボールの色
+			.color = ball.color,
+		};
+
+		// ばねにつながれた青いボールを描画する
+		Draw3D::DrawSphere(
+			ballSphere,
+			viewProjectionMatrix,
+			viewportMatrix,
+			ballSphere.color
+		);
 
 		///
 		/// ↑描画処理ここまで
