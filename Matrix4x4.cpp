@@ -442,3 +442,57 @@ Matrix4x4 Matrix4x4::MakeOBBWorldMatrix(const OBB& obb) {
 	matrix.m[3][0] = obb.center.x; matrix.m[3][1] = obb.center.y; matrix.m[3][2] = obb.center.z; matrix.m[3][3] = 1.0f;
 	return matrix;
 }
+
+/// --- Matrix4x4の演算子オーバーロード ---
+
+// 2つの行列を成分ごとに加算する
+Matrix4x4 operator+(
+	const Matrix4x4& m1,
+	const Matrix4x4& m2
+	) {
+	// {}を付けて、すべての要素を0で初期化する
+	Matrix4x4 result{};
+
+	// 行を順番に処理する
+	for (int row = 0; row < 4; ++row) {
+
+		// 各行の列を順番に処理する
+		for (int column = 0; column < 4; ++column) {
+
+			// 同じ位置にある要素同士を加算する
+			result.m[row][column] =
+				m1.m[row][column] + m2.m[row][column];
+		}
+	}
+
+	return result;
+}
+
+// 左の行列から右の行列を成分ごとに減算する
+Matrix4x4 operator-(
+	const Matrix4x4& m1,
+	const Matrix4x4& m2
+	) {
+	Matrix4x4 result{};
+
+	// 4行4列のすべての要素を計算する
+	for (int row = 0; row < 4; ++row) {
+		for (int column = 0; column < 4; ++column) {
+
+			// 同じ位置にある要素同士を減算する
+			result.m[row][column] =
+				m1.m[row][column] - m2.m[row][column];
+		}
+	}
+
+	return result;
+}
+
+// 2つの行列の積を求める
+Matrix4x4 operator*(
+	const Matrix4x4& m1,
+	const Matrix4x4& m2
+	) {
+	// すでにある行列積の関数を再利用する
+	return Matrix4x4::Multiply(m1, m2);
+}

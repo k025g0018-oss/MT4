@@ -5,20 +5,22 @@
 #include "Matrix4x4.h"
 
 /// ---Vector3---
+/*
 // 加算
 Vector3 Vector3::operator+(const Vector3& obj) const {
-    return { x + obj.x, y + obj.y, z + obj.z };
+return { x + obj.x, y + obj.y, z + obj.z };
 }
 
 // 減算
 Vector3 Vector3::operator-(const Vector3& obj) const {
-    return { x - obj.x, y - obj.y, z - obj.z };
+return { x - obj.x, y - obj.y, z - obj.z };
 }
 
 // スカラー倍
 Vector3 Vector3::operator*(float scalar) const {
-    return { x * scalar, y * scalar, z * scalar };
+return { x * scalar, y * scalar, z * scalar };
 }
+*/
 
 // 内積
 float Vector3::Dot(const Vector3& v1, const Vector3& v2) {
@@ -112,6 +114,68 @@ Vector3 Vector3::Lerp(const Vector3& v1, const Vector3& v2, float t) {
 		.y = (1.0f - t) * v1.y + t * v2.y,
 		.z = (1.0f - t) * v1.z + t * v2.z,
 	};
+
+	return result;
+}
+
+/// --- Vector3の演算子オーバーロード ---
+
+// 2つのベクトルを成分ごとに加算する
+Vector3 operator+(const Vector3& v1, const Vector3& v2) {
+	Vector3 result;
+
+	// x、y、zをそれぞれ加算する
+	result.x = v1.x + v2.x;
+	result.y = v1.y + v2.y;
+	result.z = v1.z + v2.z;
+
+	return result;
+}
+
+// 左のベクトルから右のベクトルを成分ごとに減算する
+Vector3 operator-(const Vector3& v1, const Vector3& v2) {
+	Vector3 result;
+
+	// x、y、zをそれぞれ減算する
+	result.x = v1.x - v2.x;
+	result.y = v1.y - v2.y;
+	result.z = v1.z - v2.z;
+
+	return result;
+}
+
+// ベクトルの各成分をスカラー倍する
+Vector3 operator*(const Vector3& v, float scalar) {
+	Vector3 result;
+
+	// x、y、zに同じ数を掛ける
+	result.x = v.x * scalar;
+	result.y = v.y * scalar;
+	result.z = v.z * scalar;
+
+	return result;
+}
+
+// 「スカラー * ベクトル」の順番に対応する
+Vector3 operator*(float scalar, const Vector3& v) {
+	// 上で実装した「ベクトル * スカラー」を再利用する
+	return v * scalar;
+}
+
+// 単項プラス
+Vector3 operator+(const Vector3& v) {
+	// 符号を変更せず、そのまま返す
+	return v;
+}
+
+// 単項マイナス
+Vector3 operator-(const Vector3& v) {
+	Vector3 result;
+
+	// すべての成分の符号を反転する
+	result.x = -v.x;
+	result.y = -v.y;
+	result.z = -v.z;
 
 	return result;
 }

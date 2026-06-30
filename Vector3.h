@@ -8,9 +8,11 @@ struct Vector3 {
 	float x, y, z;
 
 	// 演算子オーバーロードの宣言
+	/*
 	Vector3 operator+(const Vector3& obj) const;
 	Vector3 operator-(const Vector3& obj) const;
 	Vector3 operator*(float scalar) const;
+	*/
 
 	// ---静的関数の宣言---
 	// 内積
@@ -30,6 +32,28 @@ struct Vector3 {
 	// 線形補間
 	static Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t);
 };
+
+/// --- Vector3の演算子オーバーロード ---
+
+// 2つのベクトルを加算する
+Vector3 operator+(const Vector3& v1, const Vector3& v2);
+
+// 左のベクトルから右のベクトルを減算する
+Vector3 operator-(const Vector3& v1, const Vector3& v2);
+
+// ベクトルをスカラー倍する
+Vector3 operator*(const Vector3& v, float scalar);
+
+// 「スカラー * ベクトル」の順番にも対応する
+Vector3 operator*(float scalar, const Vector3& v);
+
+// ベクトルの符号をそのまま返す
+Vector3 operator+(const Vector3& v);
+
+// ベクトルのすべての符号を反転する
+Vector3 operator-(const Vector3& v);
+
+/// グローバル
 
 struct Transform {
 	Vector3 scale;

@@ -21,6 +21,46 @@ const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 static const int kRowHeight = 30;
 static const int kColumnWidth = 60;
 
+// 行列をImGuiに表示する関数
+void DisplayMatrix(
+	const char* label,
+	const Matrix4x4& matrix
+) {
+	// ラベルと4行4列の要素をまとめて表示する
+	ImGui::Text(
+		"%s:\n"
+		"%f, %f, %f, %f\n"
+		"%f, %f, %f, %f\n"
+		"%f, %f, %f, %f\n"
+		"%f, %f, %f, %f",
+		label,
+
+		// 1行目
+		matrix.m[0][0],
+		matrix.m[0][1],
+		matrix.m[0][2],
+		matrix.m[0][3],
+
+		// 2行目
+		matrix.m[1][0],
+		matrix.m[1][1],
+		matrix.m[1][2],
+		matrix.m[1][3],
+
+		// 3行目
+		matrix.m[2][0],
+		matrix.m[2][1],
+		matrix.m[2][2],
+		matrix.m[2][3],
+
+		// 4行目
+		matrix.m[3][0],
+		matrix.m[3][1],
+		matrix.m[3][2],
+		matrix.m[3][3]
+	);
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -136,6 +176,61 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		{1.0f, 1.0f, 1.0f},
 	};
 
+	/// --- ベクトルの演算 ---
+
+	// 演算に使用する2つのベクトル
+	Vector3 a{0.2f, 1.0f, 0.0f};
+	Vector3 b{2.4f, 3.1f, 1.2f};
+
+	// ベクトルの加算
+	Vector3 c = a + b;
+
+	// ベクトルの減算
+	Vector3 d = a - b;
+
+	// ベクトルを右側からスカラー倍する
+	Vector3 e = a * 2.4f;
+
+	// ベクトルを左側からスカラー倍する
+	Vector3 f = 2.4f * a;
+
+	// ベクトルの符号を反転する
+	Vector3 minusA = -a;
+
+	// ベクトルの符号をそのままにする
+	Vector3 plusA = +a;
+
+	/// --- 行列の演算 ---
+
+	// XYZ軸の回転量
+	Vector3 rotate{0.4f, 1.43f, -0.8f};
+
+	// X軸回転行列を作成する
+	Matrix4x4 rotateXMatrix =
+		Matrix4x4::MakeRotateXMatrix(rotate.x);
+
+	// Y軸回転行列を作成する
+	Matrix4x4 rotateYMatrix =
+		Matrix4x4::MakeRotateYMatrix(rotate.y);
+
+	// Z軸回転行列を作成する
+	Matrix4x4 rotateZMatrix =
+		Matrix4x4::MakeRotateZMatrix(rotate.z);
+
+	// 行列の加算を確認する
+	Matrix4x4 addedMatrix =
+		rotateXMatrix + rotateYMatrix;
+
+	// 行列の減算を確認する
+	Matrix4x4 subtractedMatrix =
+		rotateXMatrix - rotateYMatrix;
+
+	// 行列積を使ってXYZの回転行列を合成する
+	Matrix4x4 rotateMatrix =
+		rotateXMatrix *
+		rotateYMatrix *
+		rotateZMatrix;
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -211,103 +306,91 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::TreePop();
 		}
 
-		/*
 		// 区切り線
 		ImGui::Separator();
 
-		// OBB
-		if (ImGui::TreeNode("OBB1")) {
-			ImGui::DragFloat3("Rotate", &rotate1.x, 0.01f);
-			ImGui::DragFloat3("Center", &obb1.center.x, 0.01f);
-			ImGui::DragFloat3("Size", &obb1.size.x, 0.01f, 0.0f, FLT_MAX);
-			ImGui::TreePop();
-		}
+		/// --- ImGuiによる結果表示 ---
 
-		if (ImGui::TreeNode("OBB2")) {
-			ImGui::DragFloat3("Rotate", &rotate2.x, 0.01f);
-			ImGui::DragFloat3("Center", &obb2.center.x, 0.01f);
-			ImGui::DragFloat3("Size", &obb2.size.x, 0.01f, 0.0f, FLT_MAX);
-			ImGui::TreePop();
-		}
+		ImGui::Begin("Operator Overload");
 
-		// 区切り線
+		// ベクトルの加算結果
+		ImGui::Text(
+			"c = a + b: %f, %f, %f",
+			c.x,
+			c.y,
+			c.z
+		);
+
+		// ベクトルの減算結果
+		ImGui::Text(
+			"d = a - b: %f, %f, %f",
+			d.x,
+			d.y,
+			d.z
+		);
+
+		// ベクトルのスカラー倍
+		ImGui::Text(
+			"e = a * 2.4f: %f, %f, %f",
+			e.x,
+			e.y,
+			e.z
+		);
+
+		// 左右を入れ替えたスカラー倍
+		ImGui::Text(
+			"f = 2.4f * a: %f, %f, %f",
+			f.x,
+			f.y,
+			f.z
+		);
+
+		// 単項マイナスの結果
+		ImGui::Text(
+			"-a: %f, %f, %f",
+			minusA.x,
+			minusA.y,
+			minusA.z
+		);
+
+		// 単項プラスの結果
+		ImGui::Text(
+			"+a: %f, %f, %f",
+			plusA.x,
+			plusA.y,
+			plusA.z
+		);
+
 		ImGui::Separator();
 
-		// 線
-		if (ImGui::TreeNode("Segment")) {
-			ImGui::DragFloat3("Origin", &segment.origin.x, 0.01f);
-			ImGui::DragFloat3("Diff", &segment.diff.x, 0.01f);
-			ImGui::TreePop();
-		}
+		// 行列の加算結果
+		DisplayMatrix(
+			"rotateXMatrix + rotateYMatrix",
+			addedMatrix
+		);
 
-		// 2次ベジェ曲線
-		if (ImGui::TreeNode("Bezier Control Points")) {
-		ImGui::DragFloat3("Control Point 0", &controlPoints[0].x, 0.01f);
-		ImGui::DragFloat3("Control Point 1", &controlPoints[1].x, 0.01f);
-		ImGui::DragFloat3("Control Point 2", &controlPoints[2].x, 0.01f);
-		ImGui::TreePop();
-		}
-		*/
-		// 区切り線
 		ImGui::Separator();
 
-		// 腕の各関節のローカル変換を操作
-		if (ImGui::TreeNode("Arm Hierarchy")) {
-			const char* jointNames[3] = {"Shoulder", "Elbow", "Hand"};
+		// 行列の減算結果
+		DisplayMatrix(
+			"rotateXMatrix - rotateYMatrix",
+			subtractedMatrix
+		);
 
-			for (int i = 0; i < 3; ++i) {
-				// 関節ごとに同じ項目名を使えるようIDを分ける
-				ImGui::PushID(i);
+		ImGui::Separator();
 
-				if (ImGui::TreeNode(jointNames[i])) {
-					ImGui::DragFloat3("Translate", &translates[i].x, 0.01f);
-					ImGui::DragFloat3("Rotate", &rotates[i].x, 0.01f);
-					ImGui::DragFloat3("Scale", &scales[i].x, 0.01f);
-					ImGui::TreePop();
-				}
-
-				ImGui::PopID();
-			}
-
-			ImGui::TreePop();
-		}
+		// XYZ回転行列の積
+		DisplayMatrix(
+			"rotateMatrix",
+			rotateMatrix
+		);
 
 		// 終わり
 		ImGui::End();
 
 		/// --- 処理 ---
 		// ==========
-		// 各関節のSRTから、親座標系を基準としたローカル行列を作る
-		Matrix4x4 localMatrices[3];
-		for (int i = 0; i < 3; ++i) {
-			localMatrices[i] = Matrix4x4::MakeAffineMatrix(
-				scales[i], rotates[i], translates[i]
-			);
-		}
-
-		// 肩には親がいないため、ローカル行列がそのままワールド行列になる
-		Matrix4x4 worldMatrices[3];
-		worldMatrices[0] = localMatrices[0];
-
-		// 肘のローカル行列に肩のワールド行列を掛ける
-		worldMatrices[1] = Matrix4x4::Multiply(
-			localMatrices[1], worldMatrices[0]
-		);
-
-		// 手のローカル行列に肘のワールド行列を掛ける
-		worldMatrices[2] = Matrix4x4::Multiply(
-			localMatrices[2], worldMatrices[1]
-		);
-
-		// ワールド行列の4行目から各関節のワールド座標を取り出す
-		Vector3 jointPositions[3];
-		for (int i = 0; i < 3; ++i) {
-			jointPositions[i] = {
-				worldMatrices[i].m[3][0],
-				worldMatrices[i].m[3][1],
-				worldMatrices[i].m[3][2],
-			};
-		}
+		
 		// ==========
 
 		/// --- 当たり判定 ---
@@ -330,108 +413,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		/// --- グリッド線 ---
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
-
-		/// --- 線 ---
-		// Vector3 start = Vector3::Transform(Vector3::Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
-		// Vector3 end = Vector3::Transform(Vector3::Transform(segment.origin + segment.diff, viewProjectionMatrix), viewportMatrix);
-		// Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
-
-		/// --- 球 ---
-		// Draw3D::DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphere.color);
-
-		/// --- 平面 ---
-		// Draw3D::DrawPlane(plane, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
-
-		/// --- 三角形 ---
-		//Draw3D::DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, 0xFFFFFFFF);
-
-		/// --- AABB ---
-		// Draw3D::DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, aabbColor);
-
-		/// --- OBB ---
-		// Draw3D::DrawOBB(obb1, viewProjectionMatrix, viewportMatrix, obb1Color);
-		// Draw3D::DrawOBB(obb2, viewProjectionMatrix, viewportMatrix, obb2Color);
-
-		/// --- 2次ベジェ曲線 ---
-		//Draw3D::DrawBezier(
-		//	controlPoints[0],
-		//	controlPoints[1],
-		//	controlPoints[2],
-		//	viewProjectionMatrix,
-		//	viewportMatrix,
-		//	0xFF00FFFF
-		//);
-
-		/// --- 制御点を半径0.01mの黒い球で描画 --- 
-		//for (int i = 0; i < 3; ++i) {
-		//	Sphere controlPointSphere{
-		//		controlPoints[i],
-		//		0.01f,
-		//		0x000000FF
-		//	};
-
-		//	//Collision3D::DrawSphere(
-		//	//	controlPointSphere,
-		//	//	viewProjectionMatrix,
-		//	//	viewportMatrix,
-		//	//	controlPointSphere.color
-		//	//);
-
-		//	// 制御点をスクリーン座標へ変換
-		//	Vector3 screenPoint = Vector3::Transform(
-		//		Vector3::Transform(controlPoints[i], viewProjectionMatrix),
-		//		viewportMatrix
-		//	);
-
-		//	// 制御点を小さな黒い円で描画
-		//	Novice::DrawEllipse(
-		//		static_cast<int>(screenPoint.x),
-		//		static_cast<int>(screenPoint.y),
-		//		5,
-		//		5,
-		//		0.0f,
-		//		0x000000FF,
-		//		kFillModeSolid
-		//	);
-		//}
-
-		/// --- 階層構造 ---
-		Segment armSegments[2] = {
-			{jointPositions[0], jointPositions[1] - jointPositions[0]},
-			{jointPositions[1], jointPositions[2] - jointPositions[1]},
-		};
-
-		// 肩から肘、肘から手へ白い線を描画
-		for (int i = 0; i < 2; ++i) {
-			Draw3D::DrawSegment(
-				armSegments[i],
-				viewProjectionMatrix,
-				viewportMatrix,
-				0xFFFFFFFF
-			);
-		}
-
-		// 肩は赤、肘は緑、手は青で表示
-		const uint32_t jointColors[3] = {
-			0xFF0000FF,
-			0x00FF00FF,
-			0x0000FFFF,
-		};
-
-		for (int i = 0; i < 3; ++i) {
-			Sphere jointSphere{
-				jointPositions[i],
-				0.08f,
-				jointColors[i],
-			};
-
-			Draw3D::DrawSphere(
-				jointSphere,
-				viewProjectionMatrix,
-				viewportMatrix,
-				jointSphere.color
-			);
-		}
+		
 
 		///
 		/// ↑描画処理ここまで

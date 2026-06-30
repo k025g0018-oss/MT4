@@ -52,3 +52,23 @@ struct Matrix4x4 {
 	// OBBをWorld座標系へ変換する行列を作成する関数
 	static Matrix4x4 MakeOBBWorldMatrix(const OBB& obb);
 };
+
+/// --- Matrix4x4の演算子オーバーロード ---
+
+// 2つの行列を加算する
+Matrix4x4 operator+(
+	const Matrix4x4& m1,
+	const Matrix4x4& m2
+	);
+
+// 左の行列から右の行列を減算する
+Matrix4x4 operator-(
+	const Matrix4x4& m1,
+	const Matrix4x4& m2
+	);
+
+// 2つの行列の積を求める
+Matrix4x4 operator*(
+	const Matrix4x4& m1,
+	const Matrix4x4& m2
+	);
