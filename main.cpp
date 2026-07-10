@@ -201,42 +201,30 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ベクトルの符号をそのままにする
 	Vector3 plusA = +a;
 
-	// 振り子
-	Pendulum pendulum{
-		.anchor = {0.0f, 1.0f, 0.0f},
-		.length = 0.8f,
-		.angle = 0.7f,
-		.angularVelocity = 0.0f,
-		.angularAcceleration = 0.0f,
-	};
+	// 円錐振り子
+	ConicalPendulum conicalPendulum;
+	conicalPendulum.anchor = {0.0f, 1.0f, 0.0f};
+	conicalPendulum.length = 0.8f;
+	conicalPendulum.halfApexAngle = 0.7f;
+	conicalPendulum.angle = 0.0f;
+	conicalPendulum.angularVelocity = 0.0f;
 
-	// リセットするときに戻す初期位置
-	const Vector3 initialBallPosition{
-		1.2f,
-		0.0f,
-		0.0f
-	};
+	// 円錐振り子の球
+	Sphere conicalPendulumBall;
+	conicalPendulumBall.center = {0.0f, 0.0f, 0.0f};
+	conicalPendulumBall.radius = 0.08f;
+	conicalPendulumBall.color = 0xFFFFFFFF;
+
+	// 円錐振り子の紐
+	Segment conicalPendulumString;
+	conicalPendulumString.origin = conicalPendulum.anchor;
+	conicalPendulumString.diff = {0.0f, -conicalPendulum.length, 0.0f};
 
 	// 60FPSを前提とした1フレームの経過時間
 	const float deltaTime = 1.0f / 60.0f;
 
 	// Startボタンを押すまでは計算しない
 	bool isRunning = false;
-
-	// 振り子の球
-	Sphere pendulumBall;
-	pendulumBall.center = {
-		pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length,
-		pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length,
-		pendulum.anchor.z
-	};
-	pendulumBall.radius = 0.08f;
-	pendulumBall.color = 0xFFFFFFFF;
-
-	// 振り子の紐
-	Segment pendulumString;
-	pendulumString.origin = pendulum.anchor;
-	pendulumString.diff = pendulumBall.center - pendulum.anchor;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -325,6 +313,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			isRunning = true;
 		}
 
+		// 紐の長さを調整する
+		ImGui::SliderFloat("Length", &conicalPendulum.length, 0.1f, 3.0f);
+
+		// 円錐の開き具合を調整する
+		ImGui::SliderFloat("HalfApexAngle", &conicalPendulum.halfApexAngle, 0.1f, 1.3f);
+
 		ImGui::Separator();
 
 		// 終わり
@@ -333,26 +327,34 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///// ----- 処理 ----- /////
 		// ==========
 
-		/// --- 振り子 ---
-		if (isRunning) {
-			// 重力と紐の長さから角加速度を求める
-			pendulum.angularAcceleration = -(9.8f / pendulum.length) * std::sin(pendulum.angle);
+		/// --- 円錐振り子 ---
 
-			// 角加速度から角速度、角度を更新する
-			pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
-			pendulum.angle += pendulum.angularVelocity * deltaTime;
+		if (isRunning) {
+			// 角速度ω = √(g / Lcosθ) を求める
+			conicalPendulum.angularVelocity = std::sqrt(
+				9.8f / (conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle))
+			);
+
+			// 角速度を使って円運動の角度を進める
+			conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime;
 		}
 
+		// 円運動の半径を求める
+		float conicalRadius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
+
+		// 支点から球までの高さを求める
+		float conicalHeight = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
+
 		// 球の中心を紐の先端に合わせる
-		pendulumBall.center = {
-			pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length,
-			pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length,
-			pendulum.anchor.z
+		conicalPendulumBall.center = {
+			conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * conicalRadius,
+			conicalPendulum.anchor.y - conicalHeight,
+			conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * conicalRadius
 		};
 
 		// 紐は支点から球の中心まで伸ばす
-		pendulumString.origin = pendulum.anchor;
-		pendulumString.diff = pendulumBall.center - pendulum.anchor;
+		conicalPendulumString.origin = conicalPendulum.anchor;
+		conicalPendulumString.diff = conicalPendulumBall.center - conicalPendulum.anchor;
 		
 
 		// ==========
@@ -378,19 +380,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// --- グリッド線 ---
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-		/// --- 振り子 ---
+		/// --- 円錐振り子 ---
 		Draw3D::DrawSegment(
-			pendulumString,
+			conicalPendulumString,
 			viewProjectionMatrix,
 			viewportMatrix,
 			0xFFFFFFFF
 		);
 
 		Draw3D::DrawSphere(
-			pendulumBall,
+			conicalPendulumBall,
 			viewProjectionMatrix,
 			viewportMatrix,
-			pendulumBall.color
+			conicalPendulumBall.color
 		);
 
 		///
