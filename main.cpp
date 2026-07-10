@@ -201,40 +201,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ベクトルの符号をそのままにする
 	Vector3 plusA = +a;
 
-	// ばね
-	Spring spring{
-		// ばねの固定位置
-		.anchor = {0.0f, 0.0f, 0.0f},
-
-		// ばねに力がかかっていないときの長さ
-		.naturalLength = 1.0f,
-
-		// ばねの硬さ
-		.stiffness = 100.0f,
-
-		// 振動を弱める強さ
-		.dampingCoefficient = 2.0f,
-	};
-
-	// ボール
-	Ball ball{
-		// 自然長より0.2だけ伸ばした位置から開始する
-		.position = {1.2f, 0.0f, 0.0f},
-
-		// 最初は停止している
-		.velocity = {0.0f, 0.0f, 0.0f},
-
-		// 最初の加速度は0
-		.acceleration = {0.0f, 0.0f, 0.0f},
-
-		// ボールの質量
-		.mass = 2.0f,
-
-		// 描画するボールの大きさ
-		.radius = 0.05f,
-
-		// 青色
-		.color = 0x0000FFFF,
+	// 振り子
+	Pendulum pendulum{
+		.anchor = {0.0f, 1.0f, 0.0f},
+		.length = 0.8f,
+		.angle = 0.7f,
+		.angularVelocity = 0.0f,
+		.angularAcceleration = 0.0f,
 	};
 
 	// リセットするときに戻す初期位置
@@ -250,12 +223,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// Startボタンを押すまでは計算しない
 	bool isRunning = false;
 
-	// 円運動
-	Vector3 circleCenter = {0.0f, 0.0f, 0.0f}; // 中心となる点
-	float circleRadius = 0.8f; // 円運動の半径
+	// 振り子の球
+	Sphere pendulumBall;
+	pendulumBall.center = {
+		pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length,
+		pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length,
+		pendulum.anchor.z
+	};
+	pendulumBall.radius = 0.08f;
+	pendulumBall.color = 0xFFFFFFFF;
 
-	float angularVelocity = 3.14f;
-	float angle = 0.0f;
+	// 振り子の紐
+	Segment pendulumString;
+	pendulumString.origin = pendulum.anchor;
+	pendulumString.diff = pendulumBall.center - pendulum.anchor;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -352,14 +333,27 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///// ----- 処理 ----- /////
 		// ==========
 
-		/// --- ばね ---
+		/// --- 振り子 ---
 		if (isRunning) {
-			angle += angularVelocity * deltaTime;
+			// 重力と紐の長さから角加速度を求める
+			pendulum.angularAcceleration = -(9.8f / pendulum.length) * std::sin(pendulum.angle);
+
+			// 角加速度から角速度、角度を更新する
+			pendulum.angularVelocity += pendulum.angularAcceleration * deltaTime;
+			pendulum.angle += pendulum.angularVelocity * deltaTime;
 		}
 
-		sphere.center.x = circleCenter.x + std::cos(angle) * circleRadius;
-		sphere.center.y =  circleCenter.y + std::sin(angle) * circleRadius;
-		sphere.center.z = circleCenter.z;
+		// 球の中心を紐の先端に合わせる
+		pendulumBall.center = {
+			pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length,
+			pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length,
+			pendulum.anchor.z
+		};
+
+		// 紐は支点から球の中心まで伸ばす
+		pendulumString.origin = pendulum.anchor;
+		pendulumString.diff = pendulumBall.center - pendulum.anchor;
+		
 
 		// ==========
 
@@ -384,12 +378,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// --- グリッド線 ---
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-		/// --- 球 ---
-		Draw3D::DrawSphere(
-			sphere,
+		/// --- 振り子 ---
+		Draw3D::DrawSegment(
+			pendulumString,
 			viewProjectionMatrix,
 			viewportMatrix,
-			sphere.color
+			0xFFFFFFFF
+		);
+
+		Draw3D::DrawSphere(
+			pendulumBall,
+			viewProjectionMatrix,
+			viewportMatrix,
+			pendulumBall.color
 		);
 
 		///
