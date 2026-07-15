@@ -104,11 +104,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	sphere.radius = 0.1f;
 	sphere.color = 0xFFFFFFFF;
 
-	// 平面
-	Plane plane;
-	plane.normal = {0.0f, 1.0f, 0.0f};
-	plane.distance = 1.0f;
-
 	// 三角形
 	Triangle triangle;
 	triangle.vertices[0] = {0.0f, 1.0f, 0.0f};
@@ -226,6 +221,26 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// Startボタンを押すまでは計算しない
 	bool isRunning = false;
 
+	/// --- ボール ---
+	Ball ball{
+		.position = {0.8f, 1.2f, 0.3f},
+		.velocity = {0.0f,0.0f,0.0f},
+		.acceleration = {0.0f,-9.8f,0.0f},
+		.mass = 2.0f,
+		.radius = 0.05f,
+		.color = 0xFFFFFFFF,
+	};
+
+	// 法線方向の速度にだけ適用する反発係数
+	// 1.0fに近いほど強く跳ね、0.0fに近いほど跳ねなくなる
+	const float coefficientOfRestitution = 0.8f;
+
+	/// --- 平面 ---
+	Plane plane{
+		.normal = Vector3::Normalize({-0.2f,0.9f,-0.3f}),
+		.distance = 0.0f,
+	};
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -308,16 +323,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// Startを押したら初動かす
 		if (ImGui::Button("Start")) {
+			// ボールを課題指定の初期位置へ戻す
+			ball.position = {0.8f, 1.2f, 0.3f};
 
-			// 円運動開始する
+			// 前回の速度が残らないように静止状態へ戻す
+			ball.velocity = {0.0f, 0.0f, 0.0f};
+
+			// 重力による物理計算を開始する
 			isRunning = true;
 		}
-
-		// 紐の長さを調整する
-		ImGui::SliderFloat("Length", &conicalPendulum.length, 0.1f, 3.0f);
-
-		// 円錐の開き具合を調整する
-		ImGui::SliderFloat("HalfApexAngle", &conicalPendulum.halfApexAngle, 0.1f, 1.3f);
 
 		ImGui::Separator();
 
@@ -327,34 +341,100 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///// ----- 処理 ----- /////
 		// ==========
 
-		/// --- 円錐振り子 ---
-
+		/// --- ボール ---
+		// スタートが押されたら
 		if (isRunning) {
-			// 角速度ω = √(g / Lcosθ) を求める
-			conicalPendulum.angularVelocity = std::sqrt(
-				9.8f / (conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle))
-			);
+			// 移動前の位置を保存する
+			// この位置から移動後までをカプセルとして判定する
+			Vector3 previousPosition = ball.position;
 
-			// 角速度を使って円運動の角度を進める
-			conicalPendulum.angle += conicalPendulum.angularVelocity * deltaTime;
+			// 重力加速度によって速度を更新する
+			ball.velocity =
+				ball.velocity +
+				ball.acceleration * deltaTime;
+
+			// 速度によって移動後の予定位置を求める
+			Vector3 nextPosition =
+				ball.position +
+				ball.velocity * deltaTime;
+
+			// 移動前から移動後までをカプセルにする
+			// ボールが1フレームで平面を通り抜けても検出できる
+			Capsule capsule;
+			capsule.segment.origin = previousPosition;
+			capsule.segment.diff =
+				nextPosition - previousPosition;
+			capsule.radius = ball.radius;
+
+			// ボールを予定位置へ移動する
+			ball.position = nextPosition;
+
+			// 移動経路を含めて平面との衝突を判定する
+			if (Collision3D::IsCollisionCapsuleAndPlane(
+				capsule,
+				plane
+				)) {
+				// 更新後のボール中心から平面までの距離を求める
+				float distanceFromPlane =
+					Vector3::Dot(
+						ball.position,
+						plane.normal
+					) -
+					plane.distance;
+
+				// ボールが平面へ埋まっている場合
+				if (distanceFromPlane < ball.radius) {
+					// 平面に埋まっている深さを求める
+					float penetrationDepth =
+						ball.radius -
+						distanceFromPlane;
+
+					// 埋まった分だけ平面の法線方向へ押し戻す
+					ball.position =
+						ball.position +
+						plane.normal *
+						penetrationDepth;
+
+					// 平面の内側へ向かっている場合だけ反射させる
+					float velocityDotNormal =
+						Vector3::Dot(
+							ball.velocity,
+							plane.normal
+						);
+
+					if (velocityDotNormal < 0.0f) {
+						// 元から書かれていた処理と同じように、
+						// 反射ベクトルを求める
+						Vector3 reflected =
+							Vector3::Reflect(
+								ball.velocity,
+								plane.normal
+							);
+
+						// 反射速度の法線方向成分を取り出す
+						Vector3 projectToNormal =
+							Vector3::Project(
+								reflected,
+								plane.normal
+							);
+
+						// 反射速度の接線方向成分を取り出す
+						Vector3 movingDirection =
+							reflected -
+							projectToNormal;
+
+						// 法線方向だけに反発係数を適用する
+						// 接線方向を残すことで斜面を転がり落ちる
+						ball.velocity =
+							projectToNormal *
+							coefficientOfRestitution +
+							movingDirection;
+					}
+				}
+			}
 		}
 
-		// 円運動の半径を求める
-		float conicalRadius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-
-		// 支点から球までの高さを求める
-		float conicalHeight = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-
-		// 球の中心を紐の先端に合わせる
-		conicalPendulumBall.center = {
-			conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * conicalRadius,
-			conicalPendulum.anchor.y - conicalHeight,
-			conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * conicalRadius
-		};
-
-		// 紐は支点から球の中心まで伸ばす
-		conicalPendulumString.origin = conicalPendulum.anchor;
-		conicalPendulumString.diff = conicalPendulumBall.center - conicalPendulum.anchor;
+		
 		
 
 		// ==========
@@ -380,19 +460,27 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// --- グリッド線 ---
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-		/// --- 円錐振り子 ---
-		Draw3D::DrawSegment(
-			conicalPendulumString,
+		/// --- 平面 ---
+		Draw3D::DrawPlane(
+			plane,
 			viewProjectionMatrix,
 			viewportMatrix,
 			0xFFFFFFFF
 		);
 
+		/// --- ボールを描画 ---
+		// BallとSphereでは位置のメンバー名が違うため、描画用のSphereへ変換する
+		Sphere drawBall{
+			.center = ball.position,
+			.radius = ball.radius,
+			.color = ball.color,
+		};
+
 		Draw3D::DrawSphere(
-			conicalPendulumBall,
+			drawBall,
 			viewProjectionMatrix,
 			viewportMatrix,
-			conicalPendulumBall.color
+			drawBall.color
 		);
 
 		///

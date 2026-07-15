@@ -44,6 +44,13 @@ public:
 	// OBBとOBBの衝突判定
 	static bool IsCollisionObbAndObb(const OBB& obb1, const OBB& obb2);
 	
+	// カプセルと平面の当たり判定
+	// ボールの移動経路を含めて調べ、すり抜けを防ぐ
+	static bool IsCollisionCapsuleAndPlane(
+		const Capsule& capsule,
+		const Plane& plane
+	);
+
 private:
 	// OBBの8頂点をワールド座標で求める
 	static void GetObbVertices(const OBB& obb, Vector3 vertices[8]);

@@ -4,6 +4,68 @@
 #include <cmath>
 #include "Matrix4x4.h"
 
+/// --- Vector3の演算子オーバーロード ---
+
+// 2つのベクトルを成分ごとに加算する
+Vector3 operator+(const Vector3& v1, const Vector3& v2) {
+	Vector3 result;
+
+	// x、y、zをそれぞれ加算する
+	result.x = v1.x + v2.x;
+	result.y = v1.y + v2.y;
+	result.z = v1.z + v2.z;
+
+	return result;
+}
+
+// 左のベクトルから右のベクトルを成分ごとに減算する
+Vector3 operator-(const Vector3& v1, const Vector3& v2) {
+	Vector3 result;
+
+	// x、y、zをそれぞれ減算する
+	result.x = v1.x - v2.x;
+	result.y = v1.y - v2.y;
+	result.z = v1.z - v2.z;
+
+	return result;
+}
+
+// ベクトルの各成分をスカラー倍する
+Vector3 operator*(const Vector3& v, float scalar) {
+	Vector3 result;
+
+	// x、y、zに同じ数を掛ける
+	result.x = v.x * scalar;
+	result.y = v.y * scalar;
+	result.z = v.z * scalar;
+
+	return result;
+}
+
+// 「スカラー * ベクトル」の順番に対応する
+Vector3 operator*(float scalar, const Vector3& v) {
+	// 上で実装した「ベクトル * スカラー」を再利用する
+	return v * scalar;
+}
+
+// 単項プラス
+Vector3 operator+(const Vector3& v) {
+	// 符号を変更せず、そのまま返す
+	return v;
+}
+
+// 単項マイナス
+Vector3 operator-(const Vector3& v) {
+	Vector3 result;
+
+	// すべての成分の符号を反転する
+	result.x = -v.x;
+	result.y = -v.y;
+	result.z = -v.z;
+
+	return result;
+}
+
 /// ---Vector3---
 /*
 // 加算
@@ -118,64 +180,14 @@ Vector3 Vector3::Lerp(const Vector3& v1, const Vector3& v2, float t) {
 	return result;
 }
 
-/// --- Vector3の演算子オーバーロード ---
+// 反射ベクトルを求める関数
+Vector3 Vector3::Reflect(const Vector3& input, const Vector3& normal) {
+	// 計算に使用する法線を単位ベクトルにする
+	Vector3 normalizedNormal = Normalize(normal);
 
-// 2つのベクトルを成分ごとに加算する
-Vector3 operator+(const Vector3& v1, const Vector3& v2) {
-	Vector3 result;
-
-	// x、y、zをそれぞれ加算する
-	result.x = v1.x + v2.x;
-	result.y = v1.y + v2.y;
-	result.z = v1.z + v2.z;
-
-	return result;
-}
-
-// 左のベクトルから右のベクトルを成分ごとに減算する
-Vector3 operator-(const Vector3& v1, const Vector3& v2) {
-	Vector3 result;
-
-	// x、y、zをそれぞれ減算する
-	result.x = v1.x - v2.x;
-	result.y = v1.y - v2.y;
-	result.z = v1.z - v2.z;
-
-	return result;
-}
-
-// ベクトルの各成分をスカラー倍する
-Vector3 operator*(const Vector3& v, float scalar) {
-	Vector3 result;
-
-	// x、y、zに同じ数を掛ける
-	result.x = v.x * scalar;
-	result.y = v.y * scalar;
-	result.z = v.z * scalar;
-
-	return result;
-}
-
-// 「スカラー * ベクトル」の順番に対応する
-Vector3 operator*(float scalar, const Vector3& v) {
-	// 上で実装した「ベクトル * スカラー」を再利用する
-	return v * scalar;
-}
-
-// 単項プラス
-Vector3 operator+(const Vector3& v) {
-	// 符号を変更せず、そのまま返す
-	return v;
-}
-
-// 単項マイナス
-Vector3 operator-(const Vector3& v) {
-	Vector3 result;
-
-	// すべての成分の符号を反転する
-	result.x = -v.x;
-	result.y = -v.y;
-	result.z = -v.z;
-
-	return result;
+	// r = i - 2(i・n)n で正反射ベクトルを求める
+	return input -
+		2.0f *
+		Dot(input, normalizedNormal) *
+		normalizedNormal;
 }

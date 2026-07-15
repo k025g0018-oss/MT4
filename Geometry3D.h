@@ -71,3 +71,9 @@ struct OBB {
 };
 
 // ==========================================
+
+// カプセル化
+struct Capsule {
+	Segment segment;
+	float radius;
+};

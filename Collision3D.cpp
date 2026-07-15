@@ -335,3 +335,41 @@ bool Collision3D::IsCollisionObbAndObb(const OBB& obb1, const OBB& obb2) {
 	// 5_どの軸でも分離していなければ衝突している
 	return true;
 }
+
+// カプセルと平面の当たり判定
+bool Collision3D::IsCollisionCapsuleAndPlane(
+	const Capsule& capsule,
+	const Plane& plane
+) {
+	// カプセルの中心線の始点と終点を求める
+	Vector3 start = capsule.segment.origin;
+	Vector3 end =
+		capsule.segment.origin +
+		capsule.segment.diff;
+
+	// 始点から平面までの符号付き距離
+	float startDistance =
+		Vector3::Dot(start, plane.normal) -
+		plane.distance;
+
+	// 終点から平面までの符号付き距離
+	float endDistance =
+		Vector3::Dot(end, plane.normal) -
+		plane.distance;
+
+	// 始点と終点が平面の反対側なら、
+	// 移動途中で平面を通過している
+	if (startDistance * endDistance <= 0.0f) {
+		return true;
+	}
+
+	// 始点と終点のうち、平面に近い方を調べる
+	float nearestDistance =
+		(std::min)(
+			std::fabs(startDistance),
+			std::fabs(endDistance)
+			);
+
+	// 平面までの距離が半径以下なら衝突
+	return nearestDistance <= capsule.radius;
+}
