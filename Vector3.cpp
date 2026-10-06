@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <cmath>
 #include "Matrix4x4.h"
+#include "Geometry3D.h"
 
 /// --- Vector3の演算子オーバーロード ---
 
@@ -190,4 +191,21 @@ Vector3 Vector3::Reflect(const Vector3& input, const Vector3& normal) {
 		2.0f *
 		Dot(input, normalizedNormal) *
 		normalizedNormal;
+}
+
+/// <summary>
+/// 球面座標から直交座標への変換
+/// </summary>
+/// <param name="s"></param>
+/// <returns></returns>
+Vector3 ToCartesian(const Spherical& s) {
+
+	// XZ平面に落とした長さ
+	float rho = s.radius * std::cos(s.theta);
+
+	return {
+		rho * std::cos(s.phi),
+		s.radius * std::sin(s.theta),
+		rho * std::sin(s.phi)
+	};
 }

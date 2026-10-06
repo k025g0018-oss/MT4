@@ -3,7 +3,9 @@
 // 前方宣言
 struct Matrix4x4;
 
-// --- Vector3 ---
+/// <summary>
+/// Vector3
+/// </summary>
 struct Vector3 {
 	float x, y, z;
 
@@ -14,7 +16,7 @@ struct Vector3 {
 	Vector3 operator*(float scalar) const;
 	*/
 
-	// ---静的関数の宣言---
+	///// ----- 静的関数の宣言 -----
 	// 内積
 	static float Dot(const Vector3& v1, const Vector3& v2);
 	// 長さ(ノルム)

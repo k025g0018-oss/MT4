@@ -77,3 +77,14 @@ struct Capsule {
 	Segment segment;
 	float radius;
 };
+
+/// --- 球面座標系 ---
+
+struct Spherical {
+	float radius; // 動径 r
+	float theta; // 仰角 θ
+	float phi; // 方位角 φ
+};
+
+// 球面座標から直交座標への変換
+Vector3 ToCartesian(const Spherical& s);

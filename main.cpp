@@ -1,10 +1,11 @@
-﻿#include <Novice.h>
-#define _USE_MATH_DEFINES
+﻿#define _USE_MATH_DEFINES
+#include <Novice.h>
 #include <assert.h>
 #include <cmath>
 #include <imgui.h>
 #include <algorithm>
 #include <cfloat>
+#include <numbers>
 
 // インクルードするファイル
 #include "Vector2.h"
@@ -17,6 +18,8 @@
 #include "Spring.h"
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
+
+///// ----- 関数定義エリア ----- /////
 
 // 4x4行列の数値表示
 static const int kRowHeight = 30;
@@ -62,6 +65,8 @@ void DisplayMatrix(
 	);
 }
 
+///// ----- ===== -----
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -81,8 +86,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char keys[256] = {0};
 	char preKeys[256] = {0};
 
-	/// ---定義エリア---
-	// 線
+	///// ----- 定義エリア ----- /////
+
+	/// --- 線 ---
+
 	Segment segment{
 		.origin{-0.8f, -0.3f, 0.0f},
 		.diff{0.5f, 0.5f, 0.5f},
@@ -94,23 +101,27 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	Vector3 point{-1.5f, 0.6f, 0.6f};
 
-	// カメラの初期位置
+	/// --- カメラの初期位置 ---
+
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
 	Vector3 cameraRotate{0.25, 0.0f, 0.0f};
 
-	// 球
+	/// --- 球 ---
+
 	Sphere sphere;
 	sphere.center = {0.0f, 0.0f, 0.0f};
 	sphere.radius = 0.1f;
 	sphere.color = 0xFFFFFFFF;
 
-	// 三角形
+	/// --- 三角形 ---
+
 	Triangle triangle;
 	triangle.vertices[0] = {0.0f, 1.0f, 0.0f};
 	triangle.vertices[1] = {1.0f, -0.5f, -0.5f};
 	triangle.vertices[2] = {-1.0f, -0.5f, -0.5f};
 
-	// AABBと色の初期化
+	/// --- AABBと色の初期化 ---
+
 	AABB aabb = {
 		.min{-0.5f, -0.5f, -0.5f},
 		.max{0.5f, 0.5f, 0.5f}
@@ -120,7 +131,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Vector3 rotate1{0.0f, 0.0f, 0.0f};
 	Vector3 rotate2{-0.05f, -2.49f, 0.15f};
 
-	// OBB
+	/// --- OBB ---
+
 	OBB obb1{
 		.center{0.0f, 0.0f, 0.0f},
 		.orientations = {
@@ -143,7 +155,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	};
 	// unsigned int obb2Color = 0xFFFFFFFF;
 
-	// 2次ベジェ曲線の制御点
+	/// --- 2次ベジェ曲線の制御点 ---
+
 	Vector3 controlPoints[3] = {
 		{-0.8f, 0.58f, 1.0f},
 		{1.76f, 1.0f, -0.3f},
@@ -151,6 +164,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	};
 
 	/// --- 階層構造を構築する ---
+
 	// [0]:肩 Ws = Ls
 	// [1]:肘 We = Le * Ws
 	// [2]:手 Wh = Lh * We
@@ -196,50 +210,42 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ベクトルの符号をそのままにする
 	Vector3 plusA = +a;
 
-	// 円錐振り子
-	ConicalPendulum conicalPendulum;
-	conicalPendulum.anchor = {0.0f, 1.0f, 0.0f};
-	conicalPendulum.length = 0.8f;
-	conicalPendulum.halfApexAngle = 0.7f;
-	conicalPendulum.angle = 0.0f;
-	conicalPendulum.angularVelocity = 0.0f;
+	/// --- 球面座標系 ---
 
-	// 円錐振り子の球
-	Sphere conicalPendulumBall;
-	conicalPendulumBall.center = {0.0f, 0.0f, 0.0f};
-	conicalPendulumBall.radius = 0.08f;
-	conicalPendulumBall.color = 0xFFFFFFFF;
+	// 球面座標系から直交座標(カメラ位置)を計算
+	const float halfPi = std::numbers::pi_v<float> / 2.0f;
+	Spherical s{6.0f, 0.0f, -halfPi};
 
-	// 円錐振り子の紐
-	Segment conicalPendulumString;
-	conicalPendulumString.origin = conicalPendulum.anchor;
-	conicalPendulumString.diff = {0.0f, -conicalPendulum.length, 0.0f};
+	// 注視点 (原点)
+	const Vector3 target{0.0f, 0.0f, 0.0f};
 
-	// 60FPSを前提とした1フレームの経過時間
-	const float deltaTime = 1.0f / 60.0f;
+	// 注視点を向く3本の軸を作る
+	Vector3 worldUp{0.0f, 1.0f, 0.0f};
+	// Vector3 forward = Vector3::Normalize(target, eye);
+	// Vector3 right = Vector3::Normalize(Vector3::Cross(worldUp, forward));
+	// Vector3 up = Vector3::Cross(forward, right);
 
-	// Startボタンを押すまでは計算しない
-	bool isRunning = false;
-
-	/// --- ボール ---
-	Ball ball{
-		.position = {0.8f, 1.2f, 0.3f},
-		.velocity = {0.0f,0.0f,0.0f},
-		.acceleration = {0.0f,-9.8f,0.0f},
-		.mass = 2.0f,
-		.radius = 0.05f,
-		.color = 0xFFFFFFFF,
+	/*
+	// カメラ行列を作成
+	Matrix4x4 cameraMatrix{
+		{
+			{right.x, right.y, right.z, 0.0f},
+		{up.x, up.y, up.z, 0.0f},
+		{forward.x, forward.y, forward.z, 0.0f},
+		{eye.x, eye.y, eye.z, 1.0f}
+		}
 	};
+	*/
 
-	// 法線方向の速度にだけ適用する反発係数
-	// 1.0fに近いほど強く跳ね、0.0fに近いほど跳ねなくなる
-	const float coefficientOfRestitution = 0.8f;
+	// カメラ操作では、中心と真上・真下を避ける
+	const float limit = halfPi - 0.01f;
 
-	/// --- 平面 ---
-	Plane plane{
-		.normal = Vector3::Normalize({-0.2f,0.9f,-0.3f}),
-		.distance = 0.0f,
-	};
+	// Vector3 pos = Vector3::ToCartesian(s); // -> (0, 0, -6)
+
+	// 注視点 (原点) への向きからカメラ行列を作成して表示
+	// 初期値 : 前 (0, 0, 1)、右 (1, 0, 0)、上 (0, 1, 0)
+
+	///// ----- ===== -----
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -254,7 +260,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
-		/// --- Mouse Camera Control ---
+		///// ----- Mouse Camera Control ----- /////
+
 		// 1_ImGuiを操作している時は、マウス操作でカメラが動かないようにする
 		ImGuiIO& io = ImGui::GetIO();
 
@@ -295,12 +302,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			}
 		}
 
-		/// --- ImGui ---
+		///// ----- ===== -----
+
+		///// ----- ImGui ----- /////
+
 		// 始め
 		ImGui::Begin("Window");
 
 		// 中身
-		// カメラ
+		
+		/// --- カメラ ---
+
 		if (ImGui::TreeNode("Camera")) {
 			ImGui::DragFloat3("Translate", &cameraTranslate.x, 0.01f);
 			ImGui::DragFloat3("Rotate", &cameraRotate.x, 0.01f);
@@ -319,135 +331,92 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 区切り線
 		ImGui::Separator();
 
-		/// --- 球操作 ---
-
-		// Startを押したら初動かす
-		if (ImGui::Button("Start")) {
-			// ボールを課題指定の初期位置へ戻す
-			ball.position = {0.8f, 1.2f, 0.3f};
-
-			// 前回の速度が残らないように静止状態へ戻す
-			ball.velocity = {0.0f, 0.0f, 0.0f};
-
-			// 重力による物理計算を開始する
-			isRunning = true;
-		}
-
-		ImGui::Separator();
-
 		// 終わり
 		ImGui::End();
 
-		///// ----- 処理 ----- /////
-		// ==========
+		/// --- 球面座標の編集 ---
 
-		/// --- ボール ---
-		// スタートが押されたら
-		if (isRunning) {
-			// 移動前の位置を保存する
-			// この位置から移動後までをカプセルとして判定する
-			Vector3 previousPosition = ball.position;
+		ImGui::Begin("Spherical Coordinates");
 
-			// 重力加速度によって速度を更新する
-			ball.velocity =
-				ball.velocity +
-				ball.acceleration * deltaTime;
+		ImGui::Text("Target: (0, 0, 0) / +Y up / Camera +Z forward");
+		ImGui::Separator();
 
-			// 速度によって移動後の予定位置を求める
-			Vector3 nextPosition =
-				ball.position +
-				ball.velocity * deltaTime;
+		ImGui::InputFloat("Radius", &s.radius, 0.1f, 1.0f, "%.3f");
+		ImGui::InputFloat("Theta: elevation (rad)", &s.theta, 0.05f, 0.5f, "%.3f");
+		ImGui::InputFloat("Phi (rad)", &s.phi, 0.05f, 0.5f, "%.3f");
 
-			// 移動前から移動後までをカプセルにする
-			// ボールが1フレームで平面を通り抜けても検出できる
-			Capsule capsule;
-			capsule.segment.origin = previousPosition;
-			capsule.segment.diff =
-				nextPosition - previousPosition;
-			capsule.radius = ball.radius;
+		// 半径0と真上・真下を避ける
+		s.radius = (std::max)(s.radius, 0.1f);
+		s.theta = (std::clamp)(s.theta, -limit, limit);
 
-			// ボールを予定位置へ移動する
-			ball.position = nextPosition;
+		/// --- カメラ位置を計算 ---
 
-			// 移動経路を含めて平面との衝突を判定する
-			if (Collision3D::IsCollisionCapsuleAndPlane(
-				capsule,
-				plane
-				)) {
-				// 更新後のボール中心から平面までの距離を求める
-				float distanceFromPlane =
-					Vector3::Dot(
-						ball.position,
-						plane.normal
-					) -
-					plane.distance;
+		// 注視点からのずれを位置に足す
+		Vector3 eye = target + ToCartesian(s);
 
-				// ボールが平面へ埋まっている場合
-				if (distanceFromPlane < ball.radius) {
-					// 平面に埋まっている深さを求める
-					float penetrationDepth =
-						ball.radius -
-						distanceFromPlane;
+		/// --- 注視点を向く3本の軸を作る ---
 
-					// 埋まった分だけ平面の法線方向へ押し戻す
-					ball.position =
-						ball.position +
-						plane.normal *
-						penetrationDepth;
+		// 前 F:カメラから注視点への向き
+		Vector3 forward = Vector3::Normalize(target - eye);
+		// 右 R:世界の上と前の外積
+		Vector3 right = Vector3::Normalize(Vector3::Cross(worldUp, forward));
+		// 上 U:前と右の外積
+		Vector3 up = Vector3::Cross(forward, right);
 
-					// 平面の内側へ向かっている場合だけ反射させる
-					float velocityDotNormal =
-						Vector3::Dot(
-							ball.velocity,
-							plane.normal
-						);
+		/// --- カメラ行列(ワールド行列)を作成 ---
 
-					if (velocityDotNormal < 0.0f) {
-						// 元から書かれていた処理と同じように、
-						// 反射ベクトルを求める
-						Vector3 reflected =
-							Vector3::Reflect(
-								ball.velocity,
-								plane.normal
-							);
-
-						// 反射速度の法線方向成分を取り出す
-						Vector3 projectToNormal =
-							Vector3::Project(
-								reflected,
-								plane.normal
-							);
-
-						// 反射速度の接線方向成分を取り出す
-						Vector3 movingDirection =
-							reflected -
-							projectToNormal;
-
-						// 法線方向だけに反発係数を適用する
-						// 接線方向を残すことで斜面を転がり落ちる
-						ball.velocity =
-							projectToNormal *
-							coefficientOfRestitution +
-							movingDirection;
-					}
-				}
+		// 1〜3行目に右・上・前、4行目に位置を格納する
+		Matrix4x4 sphericalCameraMatrix{
+			{
+				{right.x, right.y, right.z, 0.0f},
+			{up.x, up.y, up.z, 0.0f},
+			{forward.x, forward.y, forward.z, 0.0f},
+			{eye.x, eye.y, eye.z, 1.0f},
 			}
+		};
+
+		/// --- 結果の表示 ---
+
+		ImGui::Separator();
+		ImGui::Text("Spherical: r = %.3f, theta = %.3f rad, phi = %.3f rad", s.radius, s.theta, s.phi);
+		ImGui::Text("Cartesian: x = %.3f, y = %.3f, z = %.3f", eye.x, eye.y, eye.z);
+
+		ImGui::Separator();
+		ImGui::Text("Camera matrix");
+		for (int row = 0; row < 4; ++row) {
+			ImGui::Text(
+				"%8.3f  %8.3f  %8.3f  %8.3f",
+				sphericalCameraMatrix.m[row][0],
+				sphericalCameraMatrix.m[row][1],
+				sphericalCameraMatrix.m[row][2],
+				sphericalCameraMatrix.m[row][3]
+			);
 		}
 
-		
-		
+		ImGui::End();
 
-		// ==========
+		///// ----- ===== -----
+
+		///// ----- 処理 ----- /////
+
+
+
+
+		///// ----- ===== -----
 
 		///// ----- 当たり判定 ----- /////
 
+		///// ----- ===== -----
 
 		///// ----- 行列更新 ----- /////
+
 		Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix({1, 1, 1}, cameraRotate, cameraTranslate);
 		Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
 		Matrix4x4 projectionMatrix = Matrix4x4::MakePerspectiveFovMatrix(0.45f, screenSize.x / screenSize.y, 0.1f, 100.0f);
 		Matrix4x4 viewProjectionMatrix = Matrix4x4::Multiply(viewMatrix, projectionMatrix);
 		Matrix4x4 viewportMatrix = Matrix4x4::MakeViewportMatrix(0, 0, screenSize.x, screenSize.y, 0.0f, 1.0f);
+
+		///// ----- ===== -----
 
 		///
 		/// ↑更新処理ここまで
@@ -457,31 +426,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		/// --- グリッド線 ---
+		///// ----- グリッド線 ----- /////
+
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-		/// --- 平面 ---
-		Draw3D::DrawPlane(
-			plane,
-			viewProjectionMatrix,
-			viewportMatrix,
-			0xFFFFFFFF
-		);
-
-		/// --- ボールを描画 ---
-		// BallとSphereでは位置のメンバー名が違うため、描画用のSphereへ変換する
-		Sphere drawBall{
-			.center = ball.position,
-			.radius = ball.radius,
-			.color = ball.color,
-		};
-
-		Draw3D::DrawSphere(
-			drawBall,
-			viewProjectionMatrix,
-			viewportMatrix,
-			drawBall.color
-		);
+		///// ----- ===== -----
 
 		///
 		/// ↑描画処理ここまで
