@@ -95,7 +95,13 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy C:\KamataEngine\DirectXGame\Resources .\NoviceResources /S /E /I /D /R /Y
-xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /S /E /I /D /R /Y</Command>
+xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /S /E /I /D /R /Y
+xcopy C:\KamataEngine\External\KamataEngine\shaders .\NoviceResources\shaders /S /E /I /D /R /Y
+xcopy C:\KamataEngine\External\KamataEngine\shaders "$(OutDirFullPath)NoviceResources\shaders" /S /E /I /D /R /Y
+xcopy C:\KamataEngine\Novice\shaders .\NoviceResources\shaders /S /E /I /D /R /Y
+xcopy C:\KamataEngine\Novice\shaders "$(OutDirFullPath)NoviceResources\shaders" /S /E /I /D /R /Y
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -124,7 +130,13 @@ xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /
     </Link>
     <PostBuildEvent>
       <Command>xcopy C:\KamataEngine\DirectXGame\Resources .\NoviceResources /S /E /I /D /R /Y
-xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /S /E /I /D /R /Y</Command>
+xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /S /E /I /D /R /Y
+xcopy C:\KamataEngine\External\KamataEngine\shaders .\NoviceResources\shaders /S /E /I /D /R /Y
+xcopy C:\KamataEngine\External\KamataEngine\shaders "$(OutDirFullPath)NoviceResources\shaders" /S /E /I /D /R /Y
+xcopy C:\KamataEngine\Novice\shaders .\NoviceResources\shaders /S /E /I /D /R /Y
+xcopy C:\KamataEngine\Novice\shaders "$(OutDirFullPath)NoviceResources\shaders" /S /E /I /D /R /Y
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Develop|x64'">
@@ -155,7 +167,13 @@ xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /
     </Link>
     <PostBuildEvent>
       <Command>xcopy C:\KamataEngine\DirectXGame\Resources .\NoviceResources /S /E /I /D /R /Y
-xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /S /E /I /D /R /Y</Command>
+xcopy C:\KamataEngine\DirectXGame\Resources "$(OutDirFullPath)NoviceResources" /S /E /I /D /R /Y
+xcopy C:\KamataEngine\External\KamataEngine\shaders .\NoviceResources\shaders /S /E /I /D /R /Y
+xcopy C:\KamataEngine\External\KamataEngine\shaders "$(OutDirFullPath)NoviceResources\shaders" /S /E /I /D /R /Y
+xcopy C:\KamataEngine\Novice\shaders .\NoviceResources\shaders /S /E /I /D /R /Y
+xcopy C:\KamataEngine\Novice\shaders "$(OutDirFullPath)NoviceResources\shaders" /S /E /I /D /R /Y
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
+copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
