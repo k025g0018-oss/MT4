@@ -216,6 +216,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="C:\KamataEngine\Adapter\Novice.h" />
     <ClInclude Include="Collision3D.h" />
     <ClInclude Include="Draw3D.h" />
+    <ClInclude Include="Easing.h" />
     <ClInclude Include="Geometry3D.h" />
     <ClInclude Include="Matrix4x4.h" />
     <ClInclude Include="Spring.h" />

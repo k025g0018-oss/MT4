@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <numbers>
+#include <chrono>
 
 // インクルードするファイル
 #include "Vector2.h"
@@ -245,10 +246,30 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// 注視点 (原点) への向きからカメラ行列を作成して表示
 	// 初期値 : 前 (0, 0, 1)、右 (1, 0, 0)、上 (0, 1, 0)
 
-	///// ----- ===== -----
+	/// --- デルタタイム ---
+
+	// 前回のフレーム先頭時刻
+	auto prevTime = std::chrono::steady_clock::now();
+
+	// deltaTime 秒での追従割合 t を計算
+	float t = 1.0f - std::exp(-speed * deltaTime);
+	// t (割合) の求め方が違うだけであとは同じ
+	camera += t * (target - camera);
+
+	///// ----- ===== ----- /////
+
+	///// ----- while (ループ処理) ----- /////
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
+
+		/// --- デルタタイム計算 ---
+
+		//今回の先頭時刻との差から秒 (float) を算出
+		auto now = std::chrono::steady_clock::now();
+		std::chrono::duration<float> elapsed = now - prevTime;
+		float Begin = elapsed.count();
+
 		// フレームの開始
 		Novice::BeginFrame();
 
@@ -302,7 +323,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			}
 		}
 
-		///// ----- ===== -----
+		///// ----- ===== ----- /////
 
 		///// ----- ImGui ----- /////
 
@@ -395,14 +416,14 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		ImGui::End();
 
-		///// ----- ===== -----
+		///// ----- ===== ----- /////
 
 		///// ----- 処理 ----- /////
 
+		
 
 
-
-		///// ----- ===== -----
+		///// ----- ===== ----- /////
 
 		///// ----- 当たり判定 ----- /////
 
@@ -430,7 +451,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		Draw3D::DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-		///// ----- ===== -----
+		///// ----- ===== ----- /////
 
 		///
 		/// ↑描画処理ここまで
@@ -439,11 +460,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// フレームの終了
 		Novice::EndFrame();
 
+		/// --- デルタタイム計算 ---
+
+		// 次回のループのために今回の時刻を更新
+		prevTime = now;
+
 		// ESCキーが押されたらループを抜ける
 		if (preKeys[DIK_ESCAPE] == 0 && keys[DIK_ESCAPE] != 0) {
 			break;
 		}
 	}
+
+	///// ----- ===== ----- /////
 
 	// ライブラリの終了
 	Novice::Finalize();

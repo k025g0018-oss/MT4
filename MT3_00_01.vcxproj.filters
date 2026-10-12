@@ -181,5 +181,6 @@
     <ClInclude Include="Spring.h">
       <Filter>KamataEngine\Source\Objects\Spring</Filter>
     </ClInclude>
+    <ClInclude Include="Easing.h" />
   </ItemGroup>
 </Project>
