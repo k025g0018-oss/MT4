@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <cfloat>
 #include <numbers>
-#include <chrono>
 
 // インクルードするファイル
 #include "Vector2.h"
@@ -17,6 +16,7 @@
 #include "Geometry3D.h"
 #include "Draw3D.h"
 #include "Spring.h"
+#include "Easing.h"
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
@@ -63,6 +63,59 @@ void DisplayMatrix(
 		matrix.m[3][1],
 		matrix.m[3][2],
 		matrix.m[3][3]
+	);
+}
+
+/// --- 円の構造体 ---
+
+struct Circle {
+	Vector2 pos; // 中心座標
+	float radius; // 半径
+	unsigned int color; // 色
+};
+
+/// --- 追従補間 ---
+
+// 2点間の距離
+float Distance(const Vector2& a, const Vector2& b) {
+	float dx = b.x - a.x;
+	float dy = b.y - a.y;
+	return std::sqrt(dx * dx + dy * dy);
+}
+
+// 残り距離が閾値未満なら目標位置にそろえ、追従完了とする
+bool SnapIfArrived(Vector2& pos, const Vector2& target, float threshold = 0.01f) {
+	if (Distance(pos, target) < threshold) {
+		pos = target;
+		return true;
+	}
+	return false;
+}
+
+// 線形補間による追従 pos += (speed * deltaTime) * (target - pos)
+bool FollowLinear(Vector2& pos, const Vector2& target, float speed, float deltaTime) {
+	// 割合 t は speed * deltaTime
+	float t = speed * deltaTime;
+	pos = Easing::Lerp(pos, target, t);
+
+	return SnapIfArrived(pos, target);
+}
+
+// 指数補間による追従
+bool FollowExponential(Vector2& pos, const Vector2& target, float speed, float deltaTime) {
+	// 割合 t の求め方が違うだけで、あとは同じ
+	float t = 1.0f - std::exp(-speed * deltaTime);
+	pos = Easing::Lerp(pos, target, t);
+
+	return SnapIfArrived(pos, target);
+}
+
+// 円を描画
+void DrawCircle(const Circle& circle, FillMode fillMode = kFillModeSolid) {
+	Novice::DrawEllipse(
+		static_cast<int>(circle.pos.x), static_cast<int>(circle.pos.y),
+		static_cast<int>(circle.radius), static_cast<int>(circle.radius),
+		0.0f, circle.color, fillMode
 	);
 }
 
@@ -246,15 +299,43 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// 注視点 (原点) への向きからカメラ行列を作成して表示
 	// 初期値 : 前 (0, 0, 1)、右 (1, 0, 0)、上 (0, 1, 0)
 
-	/// --- デルタタイム ---
+	/// --- 追従補間 ---
 
-	// 前回のフレーム先頭時刻
-	auto prevTime = std::chrono::steady_clock::now();
+	// 60fps前提で固定
+	const float kDeltaTime = 1.0f / 60.0f;
 
-	// deltaTime 秒での追従割合 t を計算
-	float t = 1.0f - std::exp(-speed * deltaTime);
-	// t (割合) の求め方が違うだけであとは同じ
-	camera += t * (target - camera);
+	// 画面中央
+	const Vector2 kCenter{640.0f, 360.0f};
+
+	// 円a:マウス位置
+	Circle circleA{
+		.pos{0.0f, 0.0f},
+		.radius = 12.0f,
+		.color = 0xFF3333FF
+	};
+
+	// 円b:線形補間で追従
+	Circle circleB{
+		.pos = kCenter,
+		.radius = 20.0f,
+		.color = 0x33CC33FF
+	};
+
+	// 比較用:指数補間で追従
+	Circle circleC{
+		.pos = kCenter,
+		.radius = 20.0f,
+		.color = 0xFFDD33FF
+	};
+
+	// 追従速度
+	float speed = 3.0f;
+
+	// 指数補間の比較表示
+	bool showExponential = false;
+
+	// 追従完了フラグ
+	bool isArrivedB = false;
 
 	///// ----- ===== ----- /////
 
@@ -262,13 +343,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
-
-		/// --- デルタタイム計算 ---
-
-		//今回の先頭時刻との差から秒 (float) を算出
-		auto now = std::chrono::steady_clock::now();
-		std::chrono::duration<float> elapsed = now - prevTime;
-		float Begin = elapsed.count();
 
 		// フレームの開始
 		Novice::BeginFrame();
@@ -325,46 +399,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		///// ----- ===== ----- /////
 
-		///// ----- ImGui ----- /////
+		///// ----- 球面座標 ----- /////
 
-		// 始め
-		ImGui::Begin("Window");
-
-		// 中身
-		
-		/// --- カメラ ---
-
-		if (ImGui::TreeNode("Camera")) {
-			ImGui::DragFloat3("Translate", &cameraTranslate.x, 0.01f);
-			ImGui::DragFloat3("Rotate", &cameraRotate.x, 0.01f);
-
-			// 区切り線
-			ImGui::Separator();
-
-			// マウスのカメラ操作
-			ImGui::Text("Left Drag  : Rotate Camera");
-			ImGui::Text("Right Drag : Move Camera");
-			ImGui::Text("MouseWheel : Move Forward / Back");
-
-			ImGui::TreePop();
-		}
-
-		// 区切り線
-		ImGui::Separator();
-
-		// 終わり
-		ImGui::End();
-
-		/// --- 球面座標の編集 ---
-
-		ImGui::Begin("Spherical Coordinates");
-
-		ImGui::Text("Target: (0, 0, 0) / +Y up / Camera +Z forward");
-		ImGui::Separator();
-
-		ImGui::InputFloat("Radius", &s.radius, 0.1f, 1.0f, "%.3f");
-		ImGui::InputFloat("Theta: elevation (rad)", &s.theta, 0.05f, 0.5f, "%.3f");
-		ImGui::InputFloat("Phi (rad)", &s.phi, 0.05f, 0.5f, "%.3f");
+		/// --- 入力値の制限 ---
 
 		// 半径0と真上・真下を避ける
 		s.radius = (std::max)(s.radius, 0.1f);
@@ -396,8 +433,63 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			}
 		};
 
-		/// --- 結果の表示 ---
+		///// ----- ===== ----- /////
 
+		///// ----- 円 ----- /////
+
+		/// --- 円aをマウス位置へ ---
+
+		int mouseX = 0;
+		int mouseY = 0;
+		Novice::GetMousePosition(&mouseX, &mouseY);
+		circleA.pos = {static_cast<float>(mouseX), static_cast<float>(mouseY)};
+
+		/// --- 線形補間で円bを追従 ---
+
+		isArrivedB = FollowLinear(circleB.pos, circleA.pos, speed, kDeltaTime);
+
+		/// --- 指数補間で円cを追従(比較用) ---
+
+		FollowExponential(circleC.pos, circleA.pos, speed, kDeltaTime);
+
+		///// ----- ===== ----- /////
+
+		///// ----- ImGui ----- /////
+
+		/// --- カメラ ---
+
+		ImGui::Begin("Window");
+
+		if (ImGui::TreeNode("Camera")) {
+			ImGui::DragFloat3("Translate", &cameraTranslate.x, 0.01f);
+			ImGui::DragFloat3("Rotate", &cameraRotate.x, 0.01f);
+
+			// 区切り線
+			ImGui::Separator();
+
+			// マウスのカメラ操作
+			ImGui::Text("Left Drag  : Rotate Camera");
+			ImGui::Text("Right Drag : Move Camera");
+			ImGui::Text("MouseWheel : Move Forward / Back");
+
+			ImGui::TreePop();
+		}
+
+		ImGui::End();
+
+		/// --- 球面座標 ---
+
+		ImGui::Begin("Spherical Coordinates");
+
+		ImGui::Text("Target: (0, 0, 0) / +Y up / Camera +Z forward");
+		ImGui::Separator();
+
+		// 編集
+		ImGui::InputFloat("Radius", &s.radius, 0.1f, 1.0f, "%.3f");
+		ImGui::InputFloat("Theta: elevation (rad)", &s.theta, 0.05f, 0.5f, "%.3f");
+		ImGui::InputFloat("Phi (rad)", &s.phi, 0.05f, 0.5f, "%.3f");
+
+		// 結果の表示
 		ImGui::Separator();
 		ImGui::Text("Spherical: r = %.3f, theta = %.3f rad, phi = %.3f rad", s.radius, s.theta, s.phi);
 		ImGui::Text("Cartesian: x = %.3f, y = %.3f, z = %.3f", eye.x, eye.y, eye.z);
@@ -416,18 +508,40 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		ImGui::End();
 
+		/// --- 追従補間 ---
+
+		ImGui::Begin("Interpolation Controller");
+
+		ImGui::Text("Target: Mouse Position (Red Circle)");
+		ImGui::Separator();
+
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.1f, 1.0f), "[Linear Interpolation - Student Mode]");
+		ImGui::SliderFloat("Speed", &speed, 0.1f, 30.0f, "%.1f");
+
+		ImGui::Text("Mouse Pos: (%.1f, %.1f)", circleA.pos.x, circleA.pos.y);
+		ImGui::Text("Circle Pos: (%.1f, %.1f)", circleB.pos.x, circleB.pos.y);
+		ImGui::Text("Distance to target: %.1f px", Distance(circleB.pos, circleA.pos));
+		ImGui::Text("Arrived: %s", isArrivedB ? "true" : "false");
+
+		ImGui::Separator();
+		ImGui::TextColored(ImVec4(1.0f, 0.1f, 1.0f, 1.0f), "[Teacher Comparison Option]");
+		ImGui::Checkbox("Show Exponential Decay (Compare)", &showExponential);
+
+		// 目標位置へ即座に合わせる
+		if (ImGui::Button("Snap to Target")) {
+			circleB.pos = circleA.pos;
+			circleC.pos = circleA.pos;
+		}
+		ImGui::SameLine();
+		// 画面中央へ戻す
+		if (ImGui::Button("Reset to Center")) {
+			circleB.pos = kCenter;
+			circleC.pos = kCenter;
+		}
+
+		ImGui::End();
+
 		///// ----- ===== ----- /////
-
-		///// ----- 処理 ----- /////
-
-		
-
-
-		///// ----- ===== ----- /////
-
-		///// ----- 当たり判定 ----- /////
-
-		///// ----- ===== -----
 
 		///// ----- 行列更新 ----- /////
 
@@ -453,17 +567,34 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		///// ----- ===== ----- /////
 
+		///// ----- 追従補間 ----- /////
+
+		// 円aと円bを結ぶ線 (追従の遅れを可視化)
+		Novice::DrawLine(
+			static_cast<int>(circleB.pos.x), static_cast<int>(circleB.pos.y),
+			static_cast<int>(circleA.pos.x), static_cast<int>(circleA.pos.y),
+			0xFFFFFFAA
+		);
+
+		// 比較用の円c
+		if (showExponential) {
+			DrawCircle(circleC, kFillModeWireFrame);
+		}
+
+		// 追従する円b
+		DrawCircle(circleB);
+
+		// マウス位置の円a
+		DrawCircle(circleA);
+
+		///// ----- ===== ----- /////
+
 		///
 		/// ↑描画処理ここまで
 		///
 
 		// フレームの終了
 		Novice::EndFrame();
-
-		/// --- デルタタイム計算 ---
-
-		// 次回のループのために今回の時刻を更新
-		prevTime = now;
 
 		// ESCキーが押されたらループを抜ける
 		if (preKeys[DIK_ESCAPE] == 0 && keys[DIK_ESCAPE] != 0) {
