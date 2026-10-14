@@ -17,6 +17,7 @@
 #include "Draw3D.h"
 #include "Spring.h"
 #include "Easing.h"
+#include "Quaternion.h"
 
 const char kWindowTitle[] = "LE2B_17_タヤ_ナオユキ_MT3";
 
@@ -117,6 +118,18 @@ void DrawCircle(const Circle& circle, FillMode fillMode = kFillModeSolid) {
 		static_cast<int>(circle.radius), static_cast<int>(circle.radius),
 		0.0f, circle.color, fillMode
 	);
+}
+
+/// --- Quaternion ---
+
+// Quaternion を表示する
+void QuaternionScreenPrintf(int x, int y, const Quaternion& q, const char* label) {
+
+	Novice::ScreenPrintf(x, y, "%.02f", q.x);
+	Novice::ScreenPrintf(x + kColumnWidth, y, "%.02f", q.y);
+	Novice::ScreenPrintf(x + kColumnWidth * 2, y, "%.02f", q.z);
+	Novice::ScreenPrintf(x + kColumnWidth * 3, y, "%.02f", q.w);
+	Novice::ScreenPrintf(x + kColumnWidth * 4, y, "%s", label);
 }
 
 ///// ----- ===== -----
@@ -336,6 +349,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// 追従完了フラグ
 	bool isArrivedB = false;
+
+	/// --- Quaternion ---
+
+	Quaternion q1 = { 2.0f, 3.0f, 4.0f, 1.0f };
+	Quaternion q2 = { 1.0f, 3.0f, 5.0f, 2.0f };
+	Quaternion identity = Identity();
+	Quaternion conj = Conjugate(q1);
+	Quaternion inv = Inverse(q1);
+	Quaternion normal = Normalize(q1);
+	Quaternion mul1 = Multiply(q1, q2);
+	Quaternion mul2 = Multiply(q2, q1);
+	float norm = Norm(q1);
 
 	///// ----- ===== ----- /////
 
@@ -586,6 +611,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// マウス位置の円a
 		DrawCircle(circleA);
+
+		///// ----- ===== ----- /////
+
+		///// ----- 描画 ----- /////
+
+		QuaternionScreenPrintf(0, kRowHeight * 0, identity, " : Identity");
+		QuaternionScreenPrintf(0, kRowHeight * 1, conj, " : Conjugate");
+		QuaternionScreenPrintf(0, kRowHeight * 2, inv, " : Inverse");
+		QuaternionScreenPrintf(0, kRowHeight * 3, normal, " : Normalize");
+		QuaternionScreenPrintf(0, kRowHeight * 4, mul1, " : Multiply(q1, q2)");
+		QuaternionScreenPrintf(0, kRowHeight * 5, mul2, " : Multiply(q2, q1)");
+		Novice::ScreenPrintf(0, kRowHeight * 6, "%.02f : Norm", norm);
 
 		///// ----- ===== ----- /////
 
