@@ -91,3 +91,70 @@ Quaternion Inverse(const Quaternion& quaternion) {
 
 	return { conj.x / normSq, conj.y / normSq, conj.z / normSq, conj.w / normSq };
 }
+
+///// ----- 回転用の関数 ----- /////
+
+/// --- 任意軸回転 ---
+// q = (n * sin(θ/2), cos(θ/2))
+Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle) {
+	float halfAngle = angle * 0.5f;
+	float sinHalf = std::sin(halfAngle);
+
+	Quaternion result;
+	result.x = axis.x * sinHalf;
+	result.y = axis.y * sinHalf;
+	result.z = axis.z * sinHalf;
+	result.w = std::cos(halfAngle);
+	return result;
+}
+
+/// --- ベクトルの回転 ---
+// r' = q * r * q*
+Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion) {
+	// ベクトルを Quaternion にする (w = 0)
+	Quaternion r = { vector.x, vector.y, vector.z, 0.0f };
+
+	// q * r * 共役q
+	Quaternion rotated = Multiply(Multiply(quaternion, r), Conjugate(quaternion));
+
+	// ベクトル部を取り出す
+	return { rotated.x, rotated.y, rotated.z };
+}
+
+/// --- 回転行列 ---
+Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion) {
+	float x = quaternion.x;
+	float y = quaternion.y;
+	float z = quaternion.z;
+	float w = quaternion.w;
+
+	Matrix4x4 result;
+
+	// 1行目
+	result.m[0][0] = w * w + x * x - y * y - z * z;
+	result.m[0][1] = 2.0f * (x * y + w * z);
+	result.m[0][2] = 2.0f * (x * z - w * y);
+	result.m[0][3] = 0.0f;
+
+	// 2行目
+	result.m[1][0] = 2.0f * (x * y - w * z);
+	result.m[1][1] = w * w - x * x + y * y - z * z;
+	result.m[1][2] = 2.0f * (y * z + w * x);
+	result.m[1][3] = 0.0f;
+
+	// 3行目
+	result.m[2][0] = 2.0f * (x * z + w * y);
+	result.m[2][1] = 2.0f * (y * z - w * x);
+	result.m[2][2] = w * w - x * x - y * y + z * z;
+	result.m[2][3] = 0.0f;
+
+	// 4行目
+	result.m[3][0] = 0.0f;
+	result.m[3][1] = 0.0f;
+	result.m[3][2] = 0.0f;
+	result.m[3][3] = 1.0f;
+
+	return result;
+}
+
+///// ----- ===== ----- /////
