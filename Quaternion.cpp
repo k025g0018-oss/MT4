@@ -164,7 +164,24 @@ Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion) {
 
 // q = normalize(from×to, 1 + from・to)
 Quaternion DirectionToDirection(const Vector3& from, const Vector3& to) {
+	const float tolerance = 1.0e-6f;
 	float dot = Vector3::Dot(from, to);
+
+	// 真逆の向きは q0 が0になり正規化できないので、垂直な軸の周りにπ回転する
+	if (dot <= -1.0f + tolerance) {
+		// from が z軸方向でなければこの軸を使う
+		Vector3 axis = {from.y, -from.x, 0.0f};
+
+		// from が z軸方向のときは最初の候補がほぼ0になるので、別の軸を使う
+		if (Vector3::Length(axis) < tolerance) {
+			axis = {from.z, 0.0f, -from.x};
+		}
+		axis = Vector3::Normalize(axis);
+
+		// q = (0, n)
+		return {axis.x, axis.y, axis.z, 0.0f};
+	}
+
 	Vector3 cross = Vector3::Cross(from, to);
 
 	// 倍率付きの回転 q0 を作る
