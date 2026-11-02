@@ -95,6 +95,7 @@ Quaternion Inverse(const Quaternion& quaternion) {
 ///// ----- 回転用の関数 ----- /////
 
 /// --- 任意軸回転 ---
+
 // q = (n * sin(θ/2), cos(θ/2))
 Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle) {
 	float halfAngle = angle * 0.5f;
@@ -109,6 +110,7 @@ Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle) {
 }
 
 /// --- ベクトルの回転 ---
+
 // r' = q * r * q*
 Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion) {
 	// ベクトルを Quaternion にする (w = 0)
@@ -122,6 +124,7 @@ Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion) {
 }
 
 /// --- 回転行列 ---
+
 Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion) {
 	float x = quaternion.x;
 	float y = quaternion.y;
@@ -155,6 +158,20 @@ Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion) {
 	result.m[3][3] = 1.0f;
 
 	return result;
+}
+
+/// --- ある方向から別の方向への回転 ---
+
+// q = normalize(from×to, 1 + from・to)
+Quaternion DirectionToDirection(const Vector3& from, const Vector3& to) {
+	float dot = Vector3::Dot(from, to);
+	Vector3 cross = Vector3::Cross(from, to);
+
+	// 倍率付きの回転 q0 を作る
+	Quaternion rotation = {cross.x, cross.y, cross.z, 1.0f + dot};
+
+	// 全体を正規化して倍率を取り除く
+	return Normalize(rotation);
 }
 
 ///// ----- ===== ----- /////

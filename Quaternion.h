@@ -39,4 +39,7 @@ Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion);
 // Quaternion から回転行列を作る
 Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion);
 
+// from を to へ向ける単位 Quaternion を作る
+Quaternion DirectionToDirection(const Vector3& from, const Vector3& to);
+
 ///// ----- ===== ----- /////

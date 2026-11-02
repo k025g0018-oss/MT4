@@ -163,6 +163,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	///// ----- 定義エリア ----- /////
 
+	/// --- 通常の向き ---
+
+	Vector3 from1 = Vector3::Normalize(Vector3{-0.6f, 0.9f, 0.2f});
+	Vector3 to1 = Vector3::Normalize(Vector3{0.4f, 0.7f, -0.5f});
+	Quaternion rotation2 = DirectionToDirection(from1, to1);
+	Matrix4x4 rotateMatrix2 = MakeRotateMatrix(rotation2);
+
 	///// ----- ===== ----- /////
 
 	///// ----- while (ループ処理) ----- /////
@@ -190,6 +197,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 
 		///// ----- 描画 ----- /////
+
+		Matrix4x4::ScreenPrintf(0, kRowHeight * 10, rotateMatrix2, "rotateMatrix2");
 
 		///// ----- ===== ----- /////
 
