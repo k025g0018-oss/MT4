@@ -181,6 +181,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Matrix4x4 rotateMatrix0 = MakeRotateMatrix(rotation0);
 	Matrix4x4 rotateMatrix1 = MakeRotateMatrix(rotation1);
 
+	/// --- 確認用 ---
+
+	Vector3 rotatedFrom0 = RotateVector(from0, rotation1);
+	Vector3 rotatedFrom1 = RotateVector(from1, rotation2);
+	Quaternion sameDirection = DirectionToDirection(from1, from1);
+
 	///// ----- ===== ----- /////
 
 	///// ----- while (ループ処理) ----- /////
@@ -212,6 +218,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Matrix4x4::ScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
 		Matrix4x4::ScreenPrintf(0, kRowHeight * 5, rotateMatrix1, "rotateMatrix1");
 		Matrix4x4::ScreenPrintf(0, kRowHeight * 10, rotateMatrix2, "rotateMatrix2");
+
+		// 真逆の向きの確認
+		VectorScreenPrintf(0, kRowHeight * 15, rotatedFrom0, " : rotatedFrom0");
+		VectorScreenPrintf(0, kRowHeight * 16, to0, " : to0");
+		Novice::ScreenPrintf(0, kRowHeight * 17, "norm : %.03f", Norm(rotation1));
+
+		// 通常の向きの確認
+		VectorScreenPrintf(0, kRowHeight * 18, rotatedFrom1, " : rotatedFrom1");
+		VectorScreenPrintf(0, kRowHeight * 19, to1, " : to1");
+		Novice::ScreenPrintf(0, kRowHeight * 20, "norm : %.03f", Norm(rotation2));
+
+		// 同じ向きの確認
+		QuaternionScreenPrintf(0, kRowHeight * 21, sameDirection, " : sameDirection");
 
 		///// ----- ===== ----- /////
 
