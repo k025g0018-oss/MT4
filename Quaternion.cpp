@@ -1,6 +1,7 @@
 ﻿#include "Quaternion.h"
 
 #include <cmath>
+#include <algorithm>
 
 /// <summary>
 /// 積
@@ -89,7 +90,7 @@ Quaternion Inverse(const Quaternion& quaternion) {
 	}
 	Quaternion conj = Conjugate(quaternion);
 
-	return { conj.x / normSq, conj.y / normSq, conj.z / normSq, conj.w / normSq };
+	return {conj.x / normSq, conj.y / normSq, conj.z / normSq, conj.w / normSq};
 }
 
 ///// ----- 回転用の関数 ----- /////
@@ -114,13 +115,13 @@ Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle) {
 // r' = q * r * q*
 Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion) {
 	// ベクトルを Quaternion にする (w = 0)
-	Quaternion r = { vector.x, vector.y, vector.z, 0.0f };
+	Quaternion r = {vector.x, vector.y, vector.z, 0.0f};
 
 	// q * r * 共役q
 	Quaternion rotated = Multiply(Multiply(quaternion, r), Conjugate(quaternion));
 
 	// ベクトル部を取り出す
-	return { rotated.x, rotated.y, rotated.z };
+	return {rotated.x, rotated.y, rotated.z};
 }
 
 /// --- 回転行列 ---
@@ -189,6 +190,67 @@ Quaternion DirectionToDirection(const Vector3& from, const Vector3& to) {
 
 	// 全体を正規化して倍率を取り除く
 	return Normalize(rotation);
+}
+
+/// <summary>
+/// 球面線形補間 (Slerp : Spherical Linear Interpolation)
+/// Slerp(q0, q1, t) = sin((1-t)θ) / sinθ * q0 + sin(tθ) / sinθ * q1
+/// </summary>
+/// <param name="q0"></param>
+/// <param name="q1"></param>
+/// <param name="t"></param>
+/// <returns></returns>
+Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t) {
+
+	// 符号を反転することがあるのでコピーしておく
+	// (引数は const なので反転用にコピーする)
+	Quaternion start = q0;
+
+	// q0 と q1 の内積
+	float dot = start.x * q1.x + start.y * q1.y + start.z * q1.z + start.w * q1.w;
+
+	// 最短経路か
+	// 内積が負なら、もう片方の回転 (-q0) を使って最短経路にする
+	if (dot < 0.0f) {
+		start = {
+			-start.x,
+			-start.y,
+			-start.z,
+			-start.w
+		};
+		dot = -dot;
+	}
+
+	// 誤差で 1 を少し超えると acos が NaN になるので抑える
+	// (誤差で 1 を超えると acos が NaN になるので抑える)
+	dot = std::min(dot, 1.0f);
+
+	// なす角を求める
+	float theta = std::acos(dot);
+	float sinTheta = std::sin(theta);
+
+	// 補間係数
+	float scale0;
+	float scale1;
+
+	// なす角がほぼ 0 のときは sinθ で割れないので線形補間にする
+	// (sinθ がほぼ 0 だと割れないので線形補間で代用する)
+	const float epsilon = 1.0e-5f;
+	if (sinTheta < epsilon) {
+		scale0 = 1.0f - t;
+		scale1 = t;
+	} else {
+		scale0 = std::sin((1.0f - t) * theta) / sinTheta;
+		scale1 = std::sin(t * theta) / sinTheta;
+	}
+
+	// それぞれの補間係数を利用して補間後の Quaternion を求める
+	return {
+		scale0 * start.x + scale1 * q1.x,
+		scale0 * start.y + scale1 * q1.y,
+		scale0 * start.z + scale1 * q1.z,
+		scale0 * start.w + scale1 * q1.w
+	};
 }
 
 ///// ----- ===== ----- /////

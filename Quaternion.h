@@ -42,4 +42,7 @@ Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion);
 // from を to へ向ける単位 Quaternion を作る
 Quaternion DirectionToDirection(const Vector3& from, const Vector3& to);
 
+// 球面線形補間 (Spherical Linear Interpolation)
+Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);
+
 ///// ----- ===== ----- /////
