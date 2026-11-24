@@ -119,6 +119,7 @@ bool Collision3D::IsCollisionTriangleAndSegment(const Triangle& triangle, const 
 }
 
 // ---AABB同士の衝突判定---
+
 bool Collision3D::IsCollisionAabbAndAabb(const AABB& a, const AABB& b) {
 	// X, Y, Z軸すべてで重なりがあるか判定
 	if ((a.min.x <= b.max.x && a.max.x >= b.min.x) &&
@@ -150,6 +151,7 @@ bool Collision3D::IsCollisionAabbAndSphere(const AABB& aabb, const Sphere& spher
 }
 
 /// --- AABBと線分の衝突判定 ---
+
 bool Collision3D::IsCollisionAabbAndSegment(const AABB& aabb, const Segment& segment) {
 	// 1_線分上の位置を表すtの範囲を用意する
 	// t=0.0fが始点、t=1.0fが終点
@@ -195,30 +197,75 @@ bool Collision3D::IsCollisionAabbAndSegment(const AABB& aabb, const Segment& seg
 }
 
 /// --- OBBと球の衝突判定 ---
+
+// 新版
+// 内積
+// 中心同士の差を、OBBの3つの軸それぞれと内積する
+// 内積3回 (掛け算9回らしい)
 bool Collision3D::IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere) {
-	// 1_OBBのWorldMatrixとその逆行列を計算
-	Matrix4x4 obbWorldMatrix = Matrix4x4::MakeOBBWorldMatrix(obb);
-	Matrix4x4 obbWorldMatrixInverse = Matrix4x4::Inverse(obbWorldMatrix);
+
+	// 1_OBBの中心から球の中心へのベクトル
+	const Vector3 centerToSphere = sphere.center - obb.center;
 
 	// 2_球の中心をOBBのローカル空間へ変換
-	Vector3 centerInOBBLocalSpace = Vector3::Transform(sphere.center, obbWorldMatrixInverse);
+	// OBBの3つの軸それぞれに内積で投影すると、「OBBから見た座標」になる
+	const Vector3 centerInOBBLocalSpace = {
+		Vector3::Dot(centerToSphere, obb.orientations[0]), // OBBのx軸方向にどれだけ離れているか
+		Vector3::Dot(centerToSphere, obb.orientations[1]), // OBBのy軸方向にどれだけ離れているか
+		Vector3::Dot(centerToSphere, obb.orientations[2]), // OBBのz軸方向にどれだけ離れているか
+	};
 
 	// 3_ローカル空間でのAABBを作成
-	// 中心が原点(0,0,0)なので、minは-size, maxはsizeとなる
+	// 中心が原点(0, 0, 0)なので、minは-size, maxはsizeとなる
 	AABB aabbOBBLocal;
 	aabbOBBLocal.min = {-obb.size.x, -obb.size.y, -obb.size.z};
 	aabbOBBLocal.max = {obb.size.x, obb.size.y, obb.size.z};
 
 	// 4_ローカル空間での球を作成
-	Sphere sphereOBBLocal;
+	Sphere sphereOBBLocal = sphere; // 色などもそのまま引き継ぐ
 	sphereOBBLocal.center = centerInOBBLocalSpace;
-	sphereOBBLocal.radius = sphere.radius;
 
 	// 5_ローカル空間でAABBと球の判定を行う
 	return IsCollisionAabbAndSphere(aabbOBBLocal, sphereOBBLocal);
 }
 
+// OBBの orientations は「長さが1で、お互いに直角な3本の軸」(Geometry3D.h のコメントにある「正規化・直交必須」)
+// ある方向に長さ1の軸と内積をとると、「その軸の方向にどれだけ進んでいるか」が出る
+// なので、 centerToSphere をOBBの x軸・y軸・z軸 と内積すると、OBBから見た (x, y, z) がそのまま手に入る
+// ->回転行列の逆行列は「転置行列(行と列を入れ替えたもの)」、それを掛けることは、結局「各軸と内積をとる」のと同じ計算になる。
+// 前提として、 orientations が「長さ1で直角」になっていること
+
+// 旧版
+// 逆行列
+// ワールド行列を作る->逆行列を作る->球の中心にかける
+// 4x4行列の逆行列は重い (掛け算が100回以上)
+/*
+bool Collision3D::IsCollisionObbAndSphere(const OBB& obb, const Sphere& sphere) {
+// 1_OBBのWorldMatrixとその逆行列を計算
+Matrix4x4 obbWorldMatrix = Matrix4x4::MakeOBBWorldMatrix(obb);
+Matrix4x4 obbWorldMatrixInverse = Matrix4x4::Inverse(obbWorldMatrix);
+
+// 2_球の中心をOBBのローカル空間へ変換
+Vector3 centerInOBBLocalSpace = Vector3::Transform(sphere.center, obbWorldMatrixInverse);
+
+// 3_ローカル空間でのAABBを作成
+// 中心が原点(0,0,0)なので、minは-size, maxはsizeとなる
+AABB aabbOBBLocal;
+aabbOBBLocal.min = {-obb.size.x, -obb.size.y, -obb.size.z};
+aabbOBBLocal.max = {obb.size.x, obb.size.y, obb.size.z};
+
+// 4_ローカル空間での球を作成
+Sphere sphereOBBLocal;
+sphereOBBLocal.center = centerInOBBLocalSpace;
+sphereOBBLocal.radius = sphere.radius;
+
+// 5_ローカル空間でAABBと球の判定を行う
+return IsCollisionAabbAndSphere(aabbOBBLocal, sphereOBBLocal);
+}
+*/
+
 /// --- OBBと線の衝突判定 ---
+
 bool Collision3D::IsCollisionObbAndSegment(const OBB& obb, const Segment& segment) {
 	// 1_OBBの向きと位置から、OBBのワールド行列を作る
 	Matrix4x4 obbWorldMatrix = Matrix4x4::MakeOBBWorldMatrix(obb);
@@ -247,6 +294,7 @@ bool Collision3D::IsCollisionObbAndSegment(const OBB& obb, const Segment& segmen
 }
 
 /// --- OBBとOBBの衝突判定 ---
+
 // OBBの8頂点をワールド座標で求める
 void Collision3D::GetObbVertices(const OBB& obb, Vector3 vertices[8]) {
 	// 1_OBBローカル空間での8頂点を作る
